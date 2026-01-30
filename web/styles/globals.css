@@ -1,12 +1,46 @@
 @import "tailwindcss";
 
 @plugin '../hero.ts';
-
 @source '../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+
+:root {
+  /* Brand Colors */
+  --primary: #33c758;
+  --primary-dark: #28a748;
+
+  /* Background Colors */
+  --background-light: #ffffff;
+  --background-dark: #131f16;
+
+  /* Surface Colors */
+  --surface-light: #f1f4f1;
+  --surface-dark: #1a1a1a;
+
+  /* Text Colors */
+  --text-main: #1c1c1e;
+  --text-secondary: #6e6e73;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  background-color: var(--background-light);
+  color: var(--text-main);
+}
+
+html {
+  scroll-behavior: smooth;
+}
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-    --font-sans: "font", sans-serif;
-    --font-mono: "monospace", monospace;
+  --font-sans: "font", sans-serif;
+  --font-mono: "monospace", monospace;
+
+  /* Mapping CSS variables to Tailwind utilities */
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-surface-light: var(--surface-light);
+  --color-text-main: var(--text-main);
+  --color-text-secondary: var(--text-secondary);
 }
