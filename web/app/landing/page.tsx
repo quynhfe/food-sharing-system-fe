@@ -4,7 +4,7 @@ import HowItWorks from "@/features/landing/components/howitwork";
 import CTA from "@/features/landing/components/cta";
 import * as motion from "motion/react-client";
 import { AnimatePresence } from "framer-motion";
-export const LandingPage = () => {
+const LandingPage = () => {
   return (
     <div className=" text-text-main selection:bg-primary selection:text-white overflow-x-hidden">
       {/* Simulate Page Transition Support */}
@@ -22,3 +22,4 @@ export const LandingPage = () => {
     </div>
   );
 };
+export default LandingPage;
