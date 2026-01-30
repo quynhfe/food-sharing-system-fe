@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import * as motion from "motion/react-client";
 import { PlusCircle, Search, Star, Leaf } from "lucide-react";
