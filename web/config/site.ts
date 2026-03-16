@@ -1,69 +1,59 @@
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Next.js + HeroUI",
-  description: "Make beautiful websites regardless of your design experience.",
+  name: "GreenShare",
+  description:
+    "Nền tảng chia sẻ thực phẩm cộng đồng - Giảm lãng phí, xây dựng cộng đồng bền vững.",
   navItems: [
     {
-      label: "Home",
+      label: "Trang chủ",
       href: "/",
     },
     {
-      label: "Docs",
-      href: "/docs",
+      label: "Cách hoạt động",
+      href: "/#how-it-works",
     },
     {
-      label: "Pricing",
-      href: "/pricing",
+      label: "Tác động",
+      href: "/#impact",
     },
     {
-      label: "Blog",
-      href: "/blog",
-    },
-    {
-      label: "About",
-      href: "/about",
+      label: "Đăng nhập",
+      href: "/login",
     },
   ],
   navMenuItems: [
     {
-      label: "Profile",
+      label: "Trang chủ",
+      href: "/",
+    },
+    {
+      label: "Khám phá",
+      href: "/feed",
+    },
+    {
+      label: "Đăng món",
+      href: "/post/create",
+    },
+    {
+      label: "Tin nhắn",
+      href: "/messages",
+    },
+    {
+      label: "Tác động",
+      href: "/impact",
+    },
+    {
+      label: "Hồ sơ",
       href: "/profile",
     },
     {
-      label: "Dashboard",
-      href: "/dashboard",
-    },
-    {
-      label: "Projects",
-      href: "/projects",
-    },
-    {
-      label: "Team",
-      href: "/team",
-    },
-    {
-      label: "Calendar",
-      href: "/calendar",
-    },
-    {
-      label: "Settings",
-      href: "/settings",
-    },
-    {
-      label: "Help & Feedback",
-      href: "/help-feedback",
-    },
-    {
-      label: "Logout",
+      label: "Đăng xuất",
       href: "/logout",
     },
   ],
   links: {
-    github: "https://github.com/heroui-inc/heroui",
-    twitter: "https://twitter.com/hero_ui",
-    docs: "https://heroui.com",
-    discord: "https://discord.gg/9b6yyZKmH4",
-    sponsor: "https://patreon.com/jrgarciadev",
+    github: "https://github.com",
+    twitter: "https://twitter.com",
   },
 };
