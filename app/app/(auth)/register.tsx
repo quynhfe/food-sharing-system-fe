@@ -1,15 +1,45 @@
 // app/(auth)/register.tsx
-import React from 'react';
-import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Text } from '../../components/ui/text';
 import { Mail, Lock, Eye, ArrowLeft, User } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { authService } from '../../services/authService';
 
 export default function Register() {
   const insets = useSafeAreaInsets();
+  
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRegister = async () => {
+    if (!fullName || !email || !password) {
+      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin bắt buộc.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await authService.register({ fullName, email, password });
+      Alert.alert('Thành công', 'Đăng ký tài khoản thành công', [
+        { text: 'OK', onPress: () => router.replace('/(tabs)') }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Lỗi', error.toString());
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white">
@@ -26,11 +56,33 @@ export default function Register() {
         </View>
 
         <View className="px-6 flex-col gap-5">
-          <Input label="Họ và tên" placeholder="Nhập họ và tên của bạn" startIcon={<User size={20} color="#94a3b8" />} />
-          <Input label="Email" placeholder="example@email.com" keyboardType="email-address" autoCapitalize="none" startIcon={<Mail size={20} color="#94a3b8" />} />
+          <Input 
+            label="Họ và tên" 
+            placeholder="Nhập họ và tên của bạn" 
+            startIcon={<User size={20} color="#94a3b8" />} 
+            value={fullName}
+            onChangeText={setFullName}
+          />
+          <Input 
+            label="Email" 
+            placeholder="example@email.com" 
+            keyboardType="email-address" 
+            autoCapitalize="none" 
+            startIcon={<Mail size={20} color="#94a3b8" />} 
+            value={email}
+            onChangeText={setEmail}
+          />
 
           <View className="flex-col w-full">
-            <Input label="Mật khẩu" placeholder="••••••••" secureTextEntry startIcon={<Lock size={20} color="#94a3b8" />} endIcon={<Eye size={20} color="#94a3b8" />} />
+            <Input 
+              label="Mật khẩu" 
+              placeholder="••••••••" 
+              secureTextEntry 
+              startIcon={<Lock size={20} color="#94a3b8" />} 
+              endIcon={<Eye size={20} color="#94a3b8" />} 
+              value={password}
+              onChangeText={setPassword}
+            />
             <View className="mt-3">
               <View className="flex-row gap-1.5 h-1.5 w-full">
                 <View className="flex-1 rounded-full bg-[#2E7D32]"></View>
@@ -42,7 +94,15 @@ export default function Register() {
             </View>
           </View>
 
-          <Input label="Xác nhận mật khẩu" placeholder="••••••••" secureTextEntry startIcon={<Lock size={20} color="#94a3b8" />} endIcon={<Eye size={20} color="#94a3b8" />} />
+          <Input 
+            label="Xác nhận mật khẩu" 
+            placeholder="••••••••" 
+            secureTextEntry 
+            startIcon={<Lock size={20} color="#94a3b8" />} 
+            endIcon={<Eye size={20} color="#94a3b8" />} 
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
 
           <View className="flex-row items-start gap-3 mt-2">
             <View className="mt-1 w-5 h-5 rounded-[6px] border-[1.5px] border-slate-300"></View>
@@ -51,7 +111,13 @@ export default function Register() {
             </Text>
           </View>
 
-          <Button onPress={() => router.replace('/(tabs)')} className="w-full mt-6 shadow-md shadow-[#2E7D32]/20">Đăng ký</Button>
+          <Button 
+            onPress={handleRegister} 
+            className={`w-full mt-6 shadow-md shadow-[#2E7D32]/20 ${isLoading ? 'opacity-70' : ''}`}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Đang xử lý...' : 'Đăng ký'}
+          </Button>
         </View>
 
         <View className="flex-1 justify-end items-center pt-10 pb-6">

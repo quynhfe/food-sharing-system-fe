@@ -5,13 +5,23 @@ import { Text } from '../components/ui/text';
 import { Leaf } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { MotiView } from 'moti';
+import { authService } from '../services/authService';
 
 export default function Splash() {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace('/onboarding');
-    }, 2000);
-    return () => clearTimeout(timer);
+    const checkAuthAndRedirect = async () => {
+      // Small pause for the splash animation
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const user = await authService.getCurrentUser();
+      
+      if (user) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/(auth)/login');
+      }
+    };
+    
+    checkAuthAndRedirect();
   }, []);
 
   return (

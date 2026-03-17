@@ -1,14 +1,56 @@
-// app/(tabs)/profile.tsx
-import React from 'react';
-import { View, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, TouchableOpacity, Image, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings, Award, Leaf, Heart, ChevronRight, LogOut, Package } from 'lucide-react-native';
 import { Text } from '../../components/ui/text';
 import { Card } from '../../components/ui/card';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
+import { authService } from '../../services/authService';
+import { router } from 'expo-router';
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const data = await authService.getCurrentUser();
+      setUser(data);
+    };
+    loadUser();
+  }, []);
+
+  const handleLogout = () => {
+    console.log('Logout button clicked');
+    
+    if (Platform.OS === 'web') {
+      const confirmLogout = window.confirm('Bạn có chắc chắn muốn đăng xuất?');
+      if (confirmLogout) {
+        performLogout();
+      }
+    } else {
+      Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
+        { text: 'Hủy', style: 'cancel' },
+        { 
+          text: 'Đăng xuất', 
+          style: 'destructive',
+          onPress: performLogout
+        },
+      ]);
+    }
+  };
+
+  const performLogout = async () => {
+    console.log('Performing logout...');
+    try {
+      await authService.logout();
+      console.log('Logout successful, redirecting...');
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      Alert.alert('Lỗi', 'Không thể đăng xuất lúc này.');
+    }
+  };
 
   return (
     <View className="flex-1 bg-[#F8FAF8]">
@@ -32,8 +74,8 @@ export default function Profile() {
               <View className="absolute bottom-1 right-1 w-6 h-6 bg-green-400 border-4 border-white rounded-full" />
             </View>
             <View className="flex-1">
-              <Text className="text-2xl font-extrabold text-white mb-1">Nguyễn Văn A</Text>
-              <Text className="text-white/80 font-medium mb-2">Thành viên từ Th10 2023</Text>
+              <Text className="text-2xl font-extrabold text-white mb-1">{user?.fullName || 'Người dùng'}</Text>
+              <Text className="text-white/80 font-medium mb-2">{user?.email || 'Email chưa cập nhật'}</Text>
               <View className="bg-white/20 self-start px-3 py-1 rounded-full flex-row items-center gap-1.5">
                 <Award size={14} color="#FDE047" />
                 <Text className="text-white font-bold text-xs">Người tiên phong</Text>
@@ -93,7 +135,11 @@ export default function Profile() {
             </Animated.View>
           ))}
 
-          <TouchableOpacity activeOpacity={0.8} className="flex-row items-center gap-4 bg-red-50 p-4 rounded-[24px] mt-4 border border-red-100">
+          <TouchableOpacity 
+            onPress={handleLogout}
+            activeOpacity={0.8} 
+            className="flex-row items-center gap-4 bg-red-50 p-4 rounded-[24px] mt-4 border border-red-100"
+          >
             <View className="w-12 h-12 bg-white rounded-full items-center justify-center">
               <LogOut size={22} color="#EF5350" />
             </View>

@@ -1,18 +1,36 @@
 // app/(auth)/login.tsx
-import React from 'react';
-import { View, TouchableOpacity, Image, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import React, { useState } from 'react';
+import { View, TouchableOpacity, Image, ScrollView, Platform, KeyboardAvoidingView, Alert } from 'react-native';
 import { Text } from '../../components/ui/text';
 import { Mail, Lock, Eye, Leaf } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { authService } from '../../services/authService';
 
 export default function Login() {
   const insets = useSafeAreaInsets();
 
-  const handleLogin = () => {
-    router.replace('/(tabs)');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Lỗi', 'Vui lòng nhập email và mật khẩu.');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await authService.login({ email, password });
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      Alert.alert('Lỗi đăng nhập', error.toString());
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -33,14 +51,38 @@ export default function Login() {
         </View>
 
         <View className="px-6 flex-col gap-5">
-          <Input label="Email" placeholder="Nhập email của bạn" keyboardType="email-address" autoCapitalize="none" startIcon={<Mail size={20} color="#94a3b8" />} />
-          <Input label="Mật khẩu" placeholder="Nhập mật khẩu" secureTextEntry startIcon={<Lock size={20} color="#94a3b8" />} endIcon={<Eye size={20} color="#94a3b8" />} />
+          <Input 
+            label="Email" 
+            placeholder="Nhập email của bạn" 
+            keyboardType="email-address" 
+            autoCapitalize="none" 
+            startIcon={<Mail size={20} color="#94a3b8" />} 
+            value={email}
+            onChangeText={setEmail}
+          />
+          <Input 
+            label="Mật khẩu" 
+            placeholder="Nhập mật khẩu" 
+            secureTextEntry 
+            startIcon={<Lock size={20} color="#94a3b8" />} 
+            endIcon={<Eye size={20} color="#94a3b8" />} 
+            value={password}
+            onChangeText={setPassword}
+          />
 
           <View className="flex-row justify-end">
-            <TouchableOpacity><Text className="text-[#2E7D32] text-sm font-bold">Quên mật khẩu?</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
+              <Text className="text-[#2E7D32] text-sm font-bold">Quên mật khẩu?</Text>
+            </TouchableOpacity>
           </View>
 
-          <Button onPress={handleLogin} className="w-full mt-4 shadow-md shadow-[#2E7D32]/20">Đăng nhập</Button>
+          <Button 
+            onPress={handleLogin} 
+            className={`w-full mt-4 shadow-md shadow-[#2E7D32]/20 ${isLoading ? 'opacity-70' : ''}`}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
+          </Button>
         </View>
 
         <View className="px-6 py-8 flex-row items-center gap-4">
