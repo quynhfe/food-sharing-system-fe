@@ -1,161 +1,65 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Eye, EyeOff, Leaf, ArrowRight, ArrowLeft } from 'lucide-react-native';
-import { Link, router } from 'expo-router';
+// app/(auth)/register.tsx
+import React from 'react';
+import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text } from '../../components/ui/text';
+import { Mail, Lock, Eye, ArrowLeft, User } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function RegisterScreen() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState(0); // 0-4
-
-  // Simulated password strength checker
-  const handlePasswordChange = (text: string) => {
-    let strength = 0;
-    if (text.length > 5) strength += 1;
-    if (text.length > 8) strength += 1;
-    if (/[A-Z]/.test(text)) strength += 1;
-    if (/[0-9!@#$%^&*]/.test(text)) strength += 1;
-    setPasswordStrength(strength);
-  };
-
+export default function Register() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
-      >
-        <ScrollView
-          className="flex-1 px-6"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1, paddingVertical: 40 }}
-        >
-          {/* Top Bar */}
-          <View className="mb-6 flex-row items-center">
-            <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-white rounded-full items-center justify-center shadow-sm border border-border-green">
-              <ArrowLeft size={20} color="#1A2E1A" />
-            </TouchableOpacity>
-          </View>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white">
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 20 }}>
+        <View className="flex-row items-center px-4 py-4">
+          <TouchableOpacity onPress={() => router.back()} className="w-12 h-12 items-center justify-center rounded-full bg-slate-50" activeOpacity={0.7}>
+            <ArrowLeft size={24} color="#334155" />
+          </TouchableOpacity>
+        </View>
 
-          {/* Header */}
-          <View className="mb-8">
-            <Text className="text-[28px] font-bold text-text-main tracking-tight mb-2">Tạo tài khoản mới 🌱</Text>
-            <Text className="text-base text-text-secondary font-medium">Bắt đầu hành trình sống xanh cùng GreenShare</Text>
-          </View>
+        <View className="px-6 pt-2 pb-8">
+          <Text className="text-slate-800 text-3xl font-extrabold leading-tight">Tạo tài khoản mới 🌱</Text>
+          <Text className="text-slate-500 mt-3 text-base font-medium">Tham gia cùng chúng tôi để bắt đầu hành trình xanh của bạn.</Text>
+        </View>
 
-          <View className="space-y-4 mb-8">
-            {/* Name */}
-            <View>
-              <Text className="text-sm font-bold text-text-main mb-2 tracking-tight">Họ và tên</Text>
-              <TextInput
-                placeholder="Nhập họ và tên của bạn"
-                placeholderTextColor="#9CA3AF"
-                className="bg-surface rounded-xl border border-border-green px-4 py-3.5 text-text-main text-base focus:border-primary focus:bg-white"
-              />
-            </View>
+        <View className="px-6 flex-col gap-5">
+          <Input label="Họ và tên" placeholder="Nhập họ và tên của bạn" startIcon={<User size={20} color="#94a3b8" />} />
+          <Input label="Email" placeholder="example@email.com" keyboardType="email-address" autoCapitalize="none" startIcon={<Mail size={20} color="#94a3b8" />} />
 
-            {/* Email */}
-            <View>
-              <Text className="text-sm font-bold text-text-main mb-2 tracking-tight">Email</Text>
-              <TextInput
-                placeholder="example@email.com"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                className="bg-surface rounded-xl border border-border-green px-4 py-3.5 text-text-main text-base focus:border-primary focus:bg-white"
-              />
-            </View>
-
-            {/* Password */}
-            <View>
-              <Text className="text-sm font-bold text-text-main mb-2 tracking-tight">Mật khẩu</Text>
-              <View className="relative mb-2">
-                <TextInput
-                  placeholder="Tạo mật khẩu (ít nhất 8 ký tự)"
-                  placeholderTextColor="#9CA3AF"
-                  secureTextEntry={!showPassword}
-                  onChangeText={handlePasswordChange}
-                  className="bg-surface rounded-xl border border-border-green px-4 py-3.5 pr-12 text-text-main text-base focus:border-primary focus:bg-white"
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-4"
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} color="#9CA3AF" />
-                  ) : (
-                    <Eye size={20} color="#9CA3AF" />
-                  )}
-                </TouchableOpacity>
+          <View className="flex-col w-full">
+            <Input label="Mật khẩu" placeholder="••••••••" secureTextEntry startIcon={<Lock size={20} color="#94a3b8" />} endIcon={<Eye size={20} color="#94a3b8" />} />
+            <View className="mt-3">
+              <View className="flex-row gap-1.5 h-1.5 w-full">
+                <View className="flex-1 rounded-full bg-[#2E7D32]"></View>
+                <View className="flex-1 rounded-full bg-[#2E7D32]"></View>
+                <View className="flex-1 rounded-full bg-[#2E7D32]/20"></View>
+                <View className="flex-1 rounded-full bg-[#2E7D32]/20"></View>
               </View>
-
-              {/* Password Strength Indicator */}
-              <View className="flex-row gap-1.5 mt-1">
-                {[1, 2, 3, 4].map((level) => (
-                  <View 
-                    key={level} 
-                    className={`flex-1 h-1.5 rounded-full ${
-                      passwordStrength >= level 
-                        ? passwordStrength <= 2 ? 'bg-warning' : 'bg-primary' 
-                        : 'bg-surface-dark'
-                    }`} 
-                  />
-                ))}
-              </View>
-              <Text className={`text-xs mt-1.5 font-medium ${
-                passwordStrength === 0 ? 'text-text-secondary' : 
-                passwordStrength <= 2 ? 'text-warning' : 'text-primary'
-              }`}>
-                {passwordStrength === 0 ? 'Bảo mật mật khẩu' : 
-                 passwordStrength <= 2 ? 'Mật khẩu yếu' : 'Mật khẩu mạnh'}
-              </Text>
-            </View>
-
-            {/* Confirm Password */}
-            <View>
-              <Text className="text-sm font-bold text-text-main mb-2 tracking-tight">Xác nhận mật khẩu</Text>
-              <TextInput
-                placeholder="Nhập lại mật khẩu"
-                placeholderTextColor="#9CA3AF"
-                secureTextEntry
-                className="bg-surface rounded-xl border border-border-green px-4 py-3.5 text-text-main text-base focus:border-primary focus:bg-white"
-              />
+              <Text className="text-[11px] mt-2 text-[#2E7D32] font-bold">Mật khẩu khá (Sử dụng thêm ký tự đặc biệt)</Text>
             </View>
           </View>
 
-          {/* Terms */}
-          <View className="flex-row items-center gap-3 mb-8 px-1">
-            <View className="w-5 h-5 border-2 border-primary rounded items-center justify-center bg-primary">
-               {/* Checked state mockup */}
-               <Text className="text-white text-xs font-bold">✓</Text>
-            </View>
-            <Text className="flex-1 text-sm text-text-secondary leading-tight">
-              Tôi đồng ý với <Text className="text-primary font-bold">Điều khoản</Text> và <Text className="text-primary font-bold">Chính sách bảo mật</Text> của GreenShare
+          <Input label="Xác nhận mật khẩu" placeholder="••••••••" secureTextEntry startIcon={<Lock size={20} color="#94a3b8" />} endIcon={<Eye size={20} color="#94a3b8" />} />
+
+          <View className="flex-row items-start gap-3 mt-2">
+            <View className="mt-1 w-5 h-5 rounded-[6px] border-[1.5px] border-slate-300"></View>
+            <Text className="text-sm text-slate-600 flex-1 font-medium leading-relaxed">
+              Tôi đồng ý với <Text className="text-[#2E7D32] font-bold">Điều khoản</Text> & <Text className="text-[#2E7D32] font-bold">Chính sách bảo mật</Text>
             </Text>
           </View>
 
-          {/* Submit */}
-          <TouchableOpacity
-            onPress={() => router.replace('/(tabs)')}
-            className="bg-primary rounded-2xl py-4 flex-row justify-center items-center gap-2 mb-8 shadow-lg shadow-primary/30"
-          >
-            <Text className="text-white font-bold text-lg">Đăng ký tài khoản</Text>
-            <ArrowRight size={20} color="white" />
-          </TouchableOpacity>
+          <Button onPress={() => router.replace('/(tabs)')} className="w-full mt-6 shadow-md shadow-[#2E7D32]/20">Đăng ký</Button>
+        </View>
 
-          {/* Login Link */}
-          <View className="flex-row justify-center mt-auto">
-            <Text className="text-text-secondary font-medium">Đã có tài khoản? </Text>
-            <Link href={"/(auth)/login" as any} asChild>
-              <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text className="text-primary font-bold">Đăng nhập</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+        <View className="flex-1 justify-end items-center pt-10 pb-6">
+          <Text className="text-slate-600 text-sm font-medium">
+            Đã có tài khoản? <Text onPress={() => router.replace('/(auth)/login')} className="text-[#2E7D32] font-extrabold">Đăng nhập</Text>
+          </Text>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

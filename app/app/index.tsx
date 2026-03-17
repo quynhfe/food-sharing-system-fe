@@ -1,46 +1,39 @@
+// app/index.tsx (Splash Screen)
 import React, { useEffect } from 'react';
-import { View, Text } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View } from 'react-native';
+import { Text } from '../components/ui/text';
 import { Leaf } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { MotiView } from 'moti';
 
-export default function SplashScreen() {
+export default function Splash() {
   useEffect(() => {
-    // Auto navigate after 2 seconds
     const timer = setTimeout(() => {
-      // In a real app, this would check secure store for auth / onboarding status
       router.replace('/onboarding');
     }, 2000);
-
     return () => clearTimeout(timer);
   }, []);
 
-  const insets = useSafeAreaInsets();
-
   return (
-    <View className="flex-1 bg-[#F8FAF8] items-center justify-center relative overflow-hidden" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
-      <View className="flex-col items-center gap-6 px-6 z-10">
-        {/* Logo Icon Container */}
-        <View className="relative flex items-center justify-center">
-          <View className="w-20 h-20 bg-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/20">
-            <Leaf size={40} color="white" fill="white" />
-          </View>
+    <View className="flex flex-col items-center justify-center h-full bg-[#F8FAF8] relative">
+      <MotiView
+        from={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'timing', duration: 500 }}
+        className="flex flex-col items-center gap-6 z-10"
+      >
+        <View className="w-20 h-20 bg-[#2E7D32] rounded-full flex items-center justify-center shadow-lg shadow-[#2E7D32]/20">
+          <Leaf size={40} className="text-white" />
         </View>
-
-        {/* Brand Typography */}
-        <View className="flex-col items-center gap-2">
-          <Text className="text-[#2E7D32] text-3xl font-bold tracking-tight">
-            GreenShare
-          </Text>
-          <Text className="text-[#5A7A5A] text-base font-normal text-center max-w-[280px]">
+        <View className="flex flex-col items-center gap-2">
+          <Text className="text-[#2E7D32] text-[32px] font-bold leading-none tracking-tight">FoodShare</Text>
+          <Text className="text-slate-500 text-base font-medium text-center max-w-[280px]">
             Chia sẻ thực phẩm – Tạo tác động
           </Text>
         </View>
-      </View>
-
-      {/* Decorative Background Elements */}
-      <View className="absolute -bottom-20 -left-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
-      <View className="absolute -top-20 -right-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+      </MotiView>
+      <View className="absolute -bottom-20 -left-20 w-64 h-64 bg-[#2E7D32]/10 rounded-full blur-3xl"></View>
+      <View className="absolute -top-20 -right-20 w-64 h-64 bg-[#2E7D32]/10 rounded-full blur-3xl"></View>
     </View>
   );
 }

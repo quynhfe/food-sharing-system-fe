@@ -1,209 +1,135 @@
+// app/(tabs)/index.tsx
 import React from 'react';
-import { View, Text, ScrollView, Image, TextInput, TouchableOpacity, FlatList } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, MapPin, Clock } from 'lucide-react-native';
-import { Link } from 'expo-router';
+import { View, TextInput, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { Text } from '../../components/ui/text';
+import { Bell, Search, MapPin, Clock, Star, ChevronRight } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getFoodBadge, formatDistance, formatTimeLeft, FoodStatus } from '../../utils/helpers';
 
-/* ─── Sub-components ─── */
-
-const FoodSearchBar = () => (
-  <View className="bg-white rounded-2xl px-4 py-3.5 flex-row items-center gap-3 border border-border-green shadow-sm shadow-black/5">
-    <Search size={20} color="#2f7f34" />
-    <TextInput
-      placeholder="Tìm món ăn gần bạn..."
-      placeholderTextColor="#5a7a5a"
-      className="flex-1 text-text-main text-base"
-    />
-  </View>
-);
-
-const FilterChips = () => {
-  const filters = ['📍 Gần bạn', '⏰ Sắp hết hạn', '⭐ Đề xuất', '🆕 Mới nhất'];
-
-  return (
-    <View className="mt-4">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 12 }}>
-        {filters.map((f, i) => (
-          <TouchableOpacity
-            key={f}
-            className={`px-5 py-2.5 rounded-full shadow-sm shadow-black/5 ${
-              i === 0 ? 'bg-primary border border-primary' : 'bg-white border border-border-green'
-            }`}
-          >
-            <Text
-              className={`text-sm font-medium ${i === 0 ? 'text-white' : 'text-text-main'}`}
-            >
-              {f}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-};
-
-interface FoodCardData {
-  id: string;
-  title: string;
-  imageSrc: string;
-  posterName: string;
-  distance: string;
-  timeLeft: string;
-  isExpiring: boolean;
-}
-
-const FoodCard = ({ item }: { item: FoodCardData }) => (
-  <Link href={`/food/${item.id}` as any} asChild>
-    <TouchableOpacity className="bg-white rounded-2xl overflow-hidden border border-border-green mb-5 shadow-sm shadow-green-900/5">
-      <Image source={{ uri: item.imageSrc }} className="w-full h-48" resizeMode="cover" />
-      <View
-        className={`absolute top-3 left-3 px-3 py-1 rounded-full ${
-          item.isExpiring ? 'bg-red-100' : 'bg-green-100'
-        }`}
-      >
-        <Text className={`text-xs font-bold ${item.isExpiring ? 'text-red-600' : 'text-green-600'}`}>
-          {item.isExpiring ? '🔴 Sắp hết hạn' : '🟢 Còn mới'}
-        </Text>
-      </View>
-      <View className="p-4">
-        <Text className="text-lg font-bold text-text-main mb-1">{item.title}</Text>
-        <Text className="text-xs text-text-secondary mb-2">{item.posterName}</Text>
-        <View className="flex-row items-center gap-3">
-          <View className="flex-row items-center gap-1">
-            <MapPin size={12} color="#5a7a5a" />
-            <Text className="text-xs text-text-secondary">{item.distance}</Text>
-          </View>
-          <View className="flex-row items-center gap-1">
-            <Clock size={12} color="#5a7a5a" />
-            <Text className="text-xs text-text-secondary">{item.timeLeft}</Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  </Link>
-);
-
-/* ─── Data ─── */
-
-const mockFoods: FoodCardData[] = [
+const foods = [
   {
     id: '1',
-    title: 'Cơm tấm sườn nướng',
-    imageSrc: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDTOjWEQIvvaRes28Do3FdXvNROveBPhNxQ1baThIx3D8I3pJ5PI4kG_zrv0oHJyY9LuJYCINhUyYg0iHu63L2j0jz2eiOA6g0IC8XB0NUGWJVAJXmA7dlUBwK3pOpCkHeaPL-jcBM3_l6UNpQmGq46rJ1szJenBu5SVSoNYqt4WkxI6PIzkK0loh30DEWV9FKTuK4CQNSbURefnbMkJoF55vu6KFpMKPWHpiPLx0OT0moaQyGrvvVFuGkcZT_lPjQc6Pzj9HrxmA',
-    posterName: 'Bếp Bà Sáu',
-    distance: '0.8 km',
-    timeLeft: 'Còn 2 giờ',
-    isExpiring: true,
+    title: 'Salad Ức Gà Áp Chảo',
+    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800',
+    status: 'EXPIRING_SOON' as FoodStatus,
+    poster: { name: 'Minh Tuấn', avatar: 'https://i.pravatar.cc/150?img=11' },
+    distance: 0.8,
+    expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: '2',
-    title: 'Bánh mì thịt nguội',
-    imageSrc: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDVsgcNAzH_eazu1X-sFsidrJwCs-TO6x4c8GO7nHfMIKDVtKizS7-0P7FXWznQAbkvCDld_NV-4E8cSrWc1l07dp1_UBEZcGBZuGckXoc4CsW6rpqax35f08GOK8Vs9VsD5RqnlLFSKsioqhNiYvDLGu4K1C5xNkMeKuc1OSS_jyYplf-DCYQINrleXDrYUL_7gGeMx18Sxc2ijlugSXcyxtV04k8Igp3OXEnFHBD9dRl-NGKdI1My_3uvAP8MwkF68uSnA4mFvg',
-    posterName: 'Tiệm bánh Kim Anh',
-    distance: '1.2 km',
-    timeLeft: 'Còn 5 giờ',
-    isExpiring: false,
-  },
-  {
-    id: '3',
-    title: 'Phở bò tái nạm',
-    imageSrc: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDu-kohyUvm46l_4P9BbqCz7wSGA1tgQEcqx3iA5Inxq_Cd6XyELPvzz7-CWWRVhyXg1YRHOVhBzKMD8f5uJjWgzQaXwFHSUc3uk8-FtNfInEpGXBot9NuT6RV2x5CpoK7JnI6i6ks5xd7-NOgNiLhMdWLuH5TgjuxHgYiX6t8aPLfcknrDl6RDYH6tKx5sSo0cLsFAXm0YhqLBT56A1IOgJcCgkDR68UdiJ4BdssO1j-4H6S6PHx30lgkb6XH6HHmBuzWJYT0LaQ',
-    posterName: 'Phở Lý Quốc Sư',
-    distance: '0.5 km',
-    timeLeft: 'Còn 3 giờ',
-    isExpiring: false,
-  },
-  {
-    id: '4',
-    title: 'Salad rau củ hữu cơ',
-    imageSrc: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAnZH6UjtotCUoc5crgyyfeVQhhkWR0gSM3thSZX1ilU5R4RS8CS_RLgoh2T5xW6UYkliQgQ4meJo_W-2SvEIG1GclMlZlaNkyHiA-0ZSVihSNzUNx92ND9UR8MiqeNedIpIbKcmXfAvyqa8m67-2vPufpqpluVy8iRD4XDiUHv_Iwi0zp8P6IVaRasBcDiJt5uwiipB19JCqW7j2dy2HeZaUNOyzz73OGIon-oSND7cb8nHaHrLy-3inhXsZGLHasYc4c8YXUXCw',
-    posterName: 'Healthy Garden',
-    distance: '2.0 km',
-    timeLeft: 'Còn 1 giờ',
-    isExpiring: true,
-  },
+    title: 'Cơm Gạo Lứt & Rau Củ',
+    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800',
+    status: 'AVAILABLE' as FoodStatus,
+    poster: { name: 'Bích Phương', avatar: 'https://i.pravatar.cc/150?img=5' },
+    distance: 1.2,
+    expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
+  }
 ];
 
-/* ─── Page ─── */
-
-const TopHeader = () => (
-  <View className="px-5 pt-4 pb-4 flex-row justify-between items-center">
-    <View>
-      <Text className="text-sm font-semibold text-text-secondary">Vị trí hiện tại</Text>
-      <View className="flex-row items-center gap-1 mt-0.5">
-        <MapPin size={16} color="#2E7D32" />
-        <Text className="text-lg font-bold text-text-main">Quận 1, TP.HCM</Text>
-      </View>
-    </View>
-    <TouchableOpacity className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20">
-      <Text className="text-xl">🔔</Text>
-      <View className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
-    </TouchableOpacity>
-  </View>
-);
-
-const StoriesRow = () => {
-  const stories = [
-    { id: '1', name: 'Thêm mới', image: null, isAdd: true },
-    { id: '2', name: 'Lan', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDFhF6vS9-6p3m7l5p58G7624c_Z5v8144_cRD49rV48W2u92P1Q81n7G9fVpB9W1yG27H49k8_aK18X1o2Z0k2yGZtL7hQYWvQn2V_UvYhX0xLg3GgR4J3p5d9bV9rG8l8Q9nIeC3ZpY6wW_R7uU5n-Z3X11bLw3b70n6vD78Q1G6F2z4b0wYQ' },
-    { id: '3', name: 'Tâm', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCVmQoY25K25iKwOq5_Gq8uRmVxW7K0B0y05K2F7U0i472O4N0z2i15M4w4R1Y05P1j9k6F1r4bY9c0O1D27H9kX22fC2zP1O2i154P2E9F2x18e8o3K3uI6oW2i6M7R0Y8z5z0L0w5oY1yU3C5_YqS9G4B0d7U4U6m7PZ4Y5kX1i1P3w32l6X2w1E5P_L4' },
-    { id: '4', name: 'Khoa', image: null },
-    { id: '5', name: 'Hành', image: null },
-  ];
+export default function Home() {
+  const insets = useSafeAreaInsets();
 
   return (
-    <View className="mb-6">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 16 }}>
-        {stories.map((story) => (
-          <View key={story.id} className="items-center gap-1.5">
-            {story.isAdd ? (
-              <TouchableOpacity className="w-16 h-16 rounded-full bg-surface border-2 border-dashed border-primary flex items-center justify-center">
-                <Text className="text-2xl text-primary">+</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity className="w-16 h-16 rounded-full border-[3px] border-primary p-0.5">
-                <View className="w-full h-full rounded-full bg-gray-200 overflow-hidden items-center justify-center">
-                  {story.image ? (
-                    <Image source={{ uri: story.image }} className="w-full h-full" />
-                  ) : (
-                    <Text className="text-2xl">👤</Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            )}
-            <Text className="text-xs font-semibold text-text-main">{story.name}</Text>
+    <View className="flex-1 bg-[#F8FAF8]">
+      <View style={{ paddingTop: insets.top }} className="bg-white px-6 pb-4 rounded-b-[32px] shadow-sm shadow-slate-200/50 z-10">
+        <View className="flex-row items-center justify-between py-2">
+          <View className="flex-col">
+            <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Vị trí của bạn</Text>
+            <TouchableOpacity className="flex-row items-center gap-1" activeOpacity={0.7}>
+              <MapPin size={18} color="#2E7D32" />
+              <Text className="text-base font-extrabold text-slate-800">Đà Nẵng, Việt Nam</Text>
+              <ChevronRight size={16} color="#94A3B8" />
+            </TouchableOpacity>
           </View>
-        ))}
+          <TouchableOpacity className="w-11 h-11 rounded-full bg-slate-50 items-center justify-center border border-slate-100 relative" activeOpacity={0.7}>
+            <Bell size={20} color="#334155" />
+            <View className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full border border-white"></View>
+          </TouchableOpacity>
+        </View>
+
+        <View className="mt-4 relative flex-row items-center">
+          <View className="absolute left-4 z-10">
+            <Search color="#94A3B8" size={20} />
+          </View>
+          <TextInput
+            placeholder="Tìm món ăn, nguyên liệu..."
+            placeholderTextColor="#94A3B8"
+            className="flex-1 h-14 pl-12 pr-4 bg-[#F8FAF8] rounded-2xl text-sm font-medium text-slate-800 border border-slate-100"
+          />
+        </View>
+        <View className="py-6">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+            <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 bg-[#2E7D32] rounded-2xl  " activeOpacity={0.8}>
+              <MapPin size={18} color="white" />
+              <Text className="text-white text-sm font-bold">Gần bạn</Text>
+            </TouchableOpacity>
+            <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 bg-white rounded-2xl  border border-slate-100" activeOpacity={0.8}>
+              <Clock size={18} color="#64748B" />
+              <Text className="text-slate-600 text-sm font-bold">Sắp hết hạn</Text>
+            </TouchableOpacity>
+            <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 bg-white rounded-2xl  border border-slate-100" activeOpacity={0.8}>
+              <Star size={18} color="#64748B" />
+              <Text className="text-slate-600 text-sm font-bold">Đánh giá cao</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+
+      <ScrollView className="flex-1 mt-5" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+
+
+        <View className="px-6">
+          <View className="flex-row items-center justify-between mb-5">
+            <Text className="text-xl font-extrabold text-slate-800">Mới chia sẻ</Text>
+            <TouchableOpacity activeOpacity={0.7}>
+              <Text className="text-[#2E7D32] text-sm font-bold">Xem tất cả</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View className="flex flex-col gap-5">
+            {foods.map(food => {
+              const badge = getFoodBadge(food.status);
+              return (
+                <TouchableOpacity
+                  key={food.id}
+                  onPress={() => router.push(`/food/${food.id}`)}
+                  activeOpacity={0.9}
+                  className="bg-white rounded-3xl shadow-sm border border-slate-100/80 overflow-hidden"
+                >
+                  <View className="relative h-44 w-full bg-slate-100">
+                    <Image source={{ uri: food.image }} className="w-full h-full" resizeMode="cover" />
+                    <View className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full flex-row items-center gap-1.5 shadow-sm">
+                      <View className={`w-2 h-2 rounded-full ${badge.color === 'bg-red-500' ? 'bg-red-500' : 'bg-[#2E7D32]'}`}></View>
+                      <Text className="text-slate-800 text-[11px] font-bold">{badge.text}</Text>
+                    </View>
+                  </View>
+                  <View className="p-5">
+                    <Text className="font-extrabold text-lg text-slate-800 mb-4">{food.title}</Text>
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center gap-2.5">
+                        <Image source={{ uri: food.poster.avatar }} className="w-8 h-8 rounded-full bg-slate-200" />
+                        <Text className="text-sm text-slate-600 font-bold">{food.poster.name}</Text>
+                      </View>
+                      <View className="flex-row items-center gap-3.5">
+                        <View className="flex-row items-center gap-1.5">
+                          <MapPin size={14} color="#94A3B8" />
+                          <Text className="text-xs font-bold text-slate-500">{formatDistance(food.distance)}</Text>
+                        </View>
+                        <View className="flex-row items-center gap-1.5">
+                          <Clock size={14} color="#94A3B8" />
+                          <Text className="text-xs font-bold text-slate-500">{formatTimeLeft(food.expiresAt)}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
       </ScrollView>
     </View>
-  );
-};
-
-export default function FeedScreen() {
-  return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <FlatList
-        data={mockFoods}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={
-          <View className="pb-2">
-            <TopHeader />
-            <StoriesRow />
-            <View className="px-5">
-              <FoodSearchBar />
-              <FilterChips />
-              <Text className="text-xl font-bold text-text-main mt-8 mb-4">Gần bạn nhất</Text>
-            </View>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View className="px-5">
-            <FoodCard item={item} />
-          </View>
-        )}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      />
-    </SafeAreaView>
   );
 }

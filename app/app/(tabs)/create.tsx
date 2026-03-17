@@ -1,122 +1,94 @@
+// app/(tabs)/create.tsx
 import React from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Camera, MapPin, Calendar, Image as ImageIcon } from 'lucide-react-native';
+import { View, TouchableOpacity, Image, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { X, Camera, MapPin } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const ImagePickerZone = () => (
-  <TouchableOpacity className="border-2 border-dashed border-primary/30 bg-primary/5 rounded-2xl py-12 items-center justify-center mb-6 shadow-sm shadow-black/5">
-    <View className="bg-primary/10 p-4 rounded-full mb-3">
-      <Camera size={32} color="#2E7D32" />
-    </View>
-    <Text className="text-base font-bold text-primary">Chạm để tải ảnh</Text>
-    <Text className="text-sm text-text-secondary mt-1">
-      Tải lên tối đa 5 hình ảnh rõ nét
-    </Text>
-  </TouchableOpacity>
-);
+import { Text } from '../../components/ui/text';
+import { Textarea } from '../../components/ui/textarea';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
-const PostFormField = ({
-  label,
-  placeholder,
-  multiline = false,
-  required = false
-}: {
-  label: string;
-  placeholder: string;
-  multiline?: boolean;
-  required?: boolean;
-}) => (
-  <View className="mb-5">
-    <Text className="text-sm font-bold text-text-main mb-2 tracking-tight">
-      {label} {required && <Text className="text-danger">*</Text>}
-    </Text>
-    <TextInput
-      placeholder={placeholder}
-      placeholderTextColor="#9CA3AF"
-      multiline={multiline}
-      numberOfLines={multiline ? 4 : 1}
-      className={`bg-surface rounded-xl border border-border-green px-4 py-3.5 text-text-main text-base focus:border-primary focus:bg-white shadow-sm shadow-black/5 ${
-        multiline ? 'min-h-[120px] text-start pt-4' : ''
-      }`}
-      style={multiline ? { textAlignVertical: 'top' } : {}}
-    />
-  </View>
-);
+export default function CreatePost() {
+  const insets = useSafeAreaInsets();
 
-export default function CreatePostScreen() {
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      {/* Fake Header for Bottom Sheet Look */}
-      <View className="px-5 pt-4 pb-2 border-b border-border-green/50 bg-white">
-        <View className="flex-row justify-between items-center mb-2">
-           <Text className="text-2xl font-black text-text-main tracking-tight">Đăng món ăn</Text>
-           <TouchableOpacity className="bg-surface px-4 py-2 rounded-full">
-             <Text className="text-sm font-bold text-text-main">Hủy</Text>
-           </TouchableOpacity>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white">
+      {/* Header */}
+      <View style={{ paddingTop: insets.top }} className="bg-white z-10 border-b border-slate-100 shadow-sm">
+        <View className="flex-row items-center justify-between px-4 py-3">
+          <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full bg-slate-50" activeOpacity={0.7}>
+            <X size={24} color="#1A2E1A" />
+          </TouchableOpacity>
+          <Text className="text-lg font-extrabold text-[#1A2E1A]">Tạo bài đăng</Text>
+          <TouchableOpacity className="px-4 py-2 bg-[#2E7D32]/10 rounded-full" activeOpacity={0.7}>
+            <Text className="text-[#2E7D32] font-bold text-sm">Đăng</Text>
+          </TouchableOpacity>
         </View>
-        <Text className="text-text-secondary text-sm">
-          Chia sẻ thực phẩm dư thừa để cùng nhau bảo vệ môi trường 🌍
-        </Text>
       </View>
 
-      <ScrollView 
-        style={{ flex: 1 }} 
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 }} 
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <ImagePickerZone />
-
-        <PostFormField 
-          label="Tên món ăn" 
-          placeholder="Ví dụ: Cơm cuộn rong biển..." 
-          required 
-        />
-        
-        <PostFormField
-          label="Mô tả món ăn"
-          placeholder="Thành phần, hương vị, lưu ý bảo quản..."
-          multiline
-        />
-
-        <View className="flex-row gap-4 mb-5">
-          <View className="flex-1">
-            <Text className="text-sm font-bold text-text-main mb-2 tracking-tight">Số lượng</Text>
-            <TextInput
-              placeholder="0 phần"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="numeric"
-              className="bg-surface rounded-xl border border-border-green px-4 py-3.5 text-text-main text-base text-center font-semibold shadow-sm shadow-black/5"
-            />
-          </View>
-          <View className="flex-1">
-            <Text className="text-sm font-bold text-text-main mb-2 tracking-tight">Hạn sử dụng <Text className="text-danger">*</Text></Text>
-            <TouchableOpacity className="bg-surface rounded-xl border border-border-green px-4 py-3.5 flex-row items-center justify-between shadow-sm shadow-black/5">
-              <Text className="text-text-secondary text-base">Hôm nay</Text>
-              <Calendar size={18} color="#2E7D32" />
+      <ScrollView className="flex-1 p-6 pb-120" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Khung ảnh */}
+        <View className="relative aspect-[4/3] w-full overflow-hidden rounded-[28px] border border-slate-100 bg-slate-50 mb-8">
+          <Image source={{ uri: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&q=80&w=800" }} className="h-full w-full" />
+          <View className="absolute inset-0 justify-end bg-black/20 p-4">
+            <TouchableOpacity className="flex-row items-center justify-center gap-2 rounded-full bg-white/90 backdrop-blur-md px-5 py-2.5 self-start shadow-sm" activeOpacity={0.8}>
+              <Camera size={18} color="#1A2E1A" />
+              <Text className="text-sm font-bold text-[#1A2E1A]">Đổi ảnh</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View className="mb-8">
-          <Text className="text-sm font-bold text-text-main mb-2 tracking-tight">Địa điểm lấy món <Text className="text-danger">*</Text></Text>
-          <View className="bg-surface rounded-xl border border-border-green px-4 py-3.5 flex-row items-center gap-3 shadow-sm shadow-black/5">
-            <MapPin size={18} color="#2E7D32" />
-            <TextInput
-              placeholder="Nhập địa chỉ của bạn"
-              placeholderTextColor="#9CA3AF"
-              defaultValue="Quận 1, TP.HCM"
-              className="flex-1 text-text-main text-base p-0"
-            />
-          </View>
-        </View>
+        {/* Form nhập liệu */}
+        <View className="flex-col gap-6 pb-8">
+          <Input
+            label="Tên món ăn *"
+            placeholder="VD: Cơm tấm sườn bì chả"
+            className="bg-[#F8FAF8] border-0"
+          />
 
-        {/* Floating Action Button */}
-        <TouchableOpacity className="bg-primary rounded-2xl py-4 items-center shadow-lg shadow-primary/30">
-          <Text className="text-white font-bold text-lg">Đăng lên GreenShare</Text>
-        </TouchableOpacity>
-        
+          <Textarea
+            label="Mô tả"
+            placeholder="Màu sắc, hương vị, tình trạng..."
+            className="bg-[#F8FAF8] border-0"
+          />
+
+          <View className="flex-row gap-4">
+            <View className="flex-1">
+              <Input
+                label="Số lượng"
+                keyboardType="numeric"
+                placeholder="1"
+                className="bg-[#F8FAF8] border-0 text-center font-bold"
+              />
+            </View>
+            <View className="flex-1">
+              <Input
+                label="Đơn vị"
+                placeholder="Phần"
+                className="bg-[#F8FAF8] border-0 text-center font-bold"
+              />
+            </View>
+          </View>
+
+          <Input
+            label="Địa điểm lấy món *"
+            placeholder="Chọn vị trí trên bản đồ"
+            className="bg-[#F8FAF8] border-0 pr-12"
+            endIcon={
+              <TouchableOpacity className="w-10 h-10 bg-[#E8F5E9] rounded-xl items-center justify-center -mr-2">
+                <MapPin color="#2E7D32" size={20} />
+              </TouchableOpacity>
+            }
+          />
+
+          {/* Dùng w-full thay vì fullWidth */}
+          <Button className="w-full mt-6 h-14 shadow-xl shadow-[#2E7D32]/30 bg-[#2E7D32]" onPress={() => router.push('/(tabs)')}>
+            <Text className="text-white font-extrabold text-lg">🌱 Đăng món ăn</Text>
+          </Button>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }

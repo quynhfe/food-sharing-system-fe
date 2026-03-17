@@ -1,152 +1,98 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, ChevronLeft, Send, Image as ImageIcon } from 'lucide-react-native';
+// app/(tabs)/messages.tsx
+import React from 'react';
+import { View, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Search, CheckCheck } from 'lucide-react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { router } from 'expo-router';
+import { Text } from '@/components/ui/text';
+import { Input } from '@/components/ui/Input';
 
-const mockConversations = [
+const mockChats = [
   {
     id: '1',
-    name: 'Nguyễn Văn An',
-    food: 'Bún chả Hà Nội',
-    time: '14:30',
-    status: 'Đang chờ xác nhận',
-    statusColor: 'bg-warning/10',
-    statusTextColor: 'text-warning',
-    hasUnread: true,
-    avatar: 'A',
+    name: 'Nguyễn Văn A',
+    food: 'Bánh mì kẹp thịt',
+    message: 'Mình đang qua lấy bạn nhé.',
+    time: '10:30',
+    unread: 2,
+    image: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&q=80&w=800',
+    avatar: 'https://i.pravatar.cc/150?img=11'
   },
   {
     id: '2',
-    name: 'Trần Thị Bé',
-    food: 'Phở Bò Tái Lăn',
-    time: '12:15',
-    status: 'Đã xác nhận lấy',
-    statusColor: 'bg-primary/10',
-    statusTextColor: 'text-primary',
-    hasUnread: false,
-    avatar: 'B',
-  },
-  {
-    id: '3',
-    name: 'Lê Minh Khôi',
-    food: 'Bánh mì bơ tỏi',
-    time: 'Hôm qua',
-    status: 'Hoàn tất',
-    statusColor: 'bg-surface-dark',
-    statusTextColor: 'text-text-secondary',
-    hasUnread: false,
-    avatar: 'K',
-  },
-];
-
-const mockChatMessages = [
-  { id: '1', text: 'Chào bạn, mình thấy bạn đang đăng tặng cơm tấm, không biết còn không ạ?', isMe: false, time: '14:20' },
-  { id: '2', text: 'Chào bạn, dạ còn nha bạn.', isMe: true, time: '14:25' },
-  { id: '3', text: 'Tuyệt quá, khoảng 5h chiều mình ghé lấy được không?', isMe: false, time: '14:30' },
-];
-
-export default function MessagesScreen() {
-  const [activeChat, setActiveChat] = useState<string | null>(null);
-
-  if (activeChat) {
-    const chatInfo = mockConversations.find(c => c.id === activeChat);
-    return (
-      <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-        {/* Chat Header */}
-        <View className="px-4 py-3 border-b border-border-green flex-row items-center gap-3 bg-white">
-          <TouchableOpacity onPress={() => setActiveChat(null)} className="p-2 -ml-2 rounded-full hover:bg-surface">
-            <ChevronLeft size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center">
-            <Text className="font-bold text-primary">{chatInfo?.avatar}</Text>
-          </View>
-          <View className="flex-1">
-            <Text className="font-bold text-text-main text-base">{chatInfo?.name}</Text>
-            <Text className="text-xs text-text-secondary">Về món: {chatInfo?.food}</Text>
-          </View>
-        </View>
-
-        {/* Chat Messages */}
-        <FlatList
-          data={mockChatMessages}
-          keyExtractor={item => item.id}
-          className="flex-1 px-4 py-4"
-          contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
-          renderItem={({ item }) => (
-            <View className={`max-w-[80%] rounded-2xl px-4 py-3 ${item.isMe ? 'bg-primary self-end rounded-tr-sm' : 'bg-white border border-border-green self-start rounded-tl-sm shadow-sm'}`}>
-              <Text className={`text-base ${item.isMe ? 'text-white' : 'text-text-main'}`}>{item.text}</Text>
-              <Text className={`text-[10px] mt-1 text-right ${item.isMe ? 'text-white/70' : 'text-text-secondary'}`}>{item.time}</Text>
-            </View>
-          )}
-        />
-
-        {/* Message Input */}
-        <View className="p-4 bg-white border-t border-border-green flex-row items-center gap-3">
-          <TouchableOpacity className="p-2 rounded-full bg-surface">
-            <ImageIcon size={20} color="#5a7a5a" />
-          </TouchableOpacity>
-          <TextInput
-            placeholder="Nhập tin nhắn..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 bg-surface rounded-full px-4 py-2.5 text-text-main border border-border-green focus:border-primary focus:bg-white"
-          />
-          <TouchableOpacity className="w-10 h-10 rounded-full bg-primary items-center justify-center shadow-sm shadow-black/5">
-            <Send size={18} color="white" className="ml-1" />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
+    name: 'Trần Thị Hoa',
+    food: 'Salad ức gà',
+    message: 'Cảm ơn bạn nhiều, đồ ăn ngon lắm!',
+    time: '09:15',
+    unread: 0,
+    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800',
+    avatar: 'https://i.pravatar.cc/150?img=5'
   }
+];
+
+export default function Messages() {
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="px-5 pt-4 pb-2">
-        <Text className="text-2xl font-black text-text-main tracking-tight mb-4">Tin nhắn 💬</Text>
-        <View className="bg-white rounded-2xl px-4 py-3.5 flex-row items-center gap-3 border border-border-green mb-2 shadow-sm shadow-black/5">
-          <Search size={20} color="#9CA3AF" />
-          <TextInput
-            placeholder="Tìm kiếm cuộc trò chuyện..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 text-text-main text-base p-0"
-          />
+    <View className="flex-1 bg-[#F8FAF8]">
+      <View
+        className="bg-white z-20 px-6 pb-4 shadow-sm shadow-slate-200/40 rounded-b-[32px]"
+        style={{ paddingTop: Math.max(insets.top, 20) }}
+      >
+        <View className="flex-row items-center justify-between mb-6">
+          <View>
+            <Text className="text-2xl font-extrabold text-[#1A2E1A]">Tin nhắn 💬</Text>
+            <Text className="text-slate-500 font-medium mt-1">Kết nối với cộng đồng</Text>
+          </View>
+          <TouchableOpacity className="w-12 h-12 bg-[#F1F5F1] rounded-full items-center justify-center" activeOpacity={0.8}>
+            <CheckCheck size={22} color="#2E7D32" />
+          </TouchableOpacity>
         </View>
+
+        <Input
+          placeholder="Tìm kiếm cuộc trò chuyện..."
+          className="bg-[#F8FAF8] border-0 h-14 rounded-2xl"
+          startIcon={<Search color="#94A3B8" size={20} />}
+        />
       </View>
 
-        <FlatList
-        data={mockConversations}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            onPress={() => setActiveChat(item.id)}
-            className="mb-3 bg-white rounded-2xl p-4 flex-row items-center gap-4 border border-border-green shadow-sm shadow-black/5"
-          >
-            <View className="w-14 h-14 rounded-full bg-primary/10 items-center justify-center border border-primary/20">
-              <Text className="text-xl font-bold text-primary">{item.avatar}</Text>
-            </View>
-            
-            <View className="flex-1">
-              <View className="flex-row justify-between items-center mb-1">
-                <Text className="font-bold text-text-main text-base">{item.name}</Text>
-                <Text className="text-xs font-semibold text-text-secondary">{item.time}</Text>
-              </View>
-              <Text className="text-sm text-text-secondary mb-2" numberOfLines={1}>
-                {item.hasUnread ? 'Tin nhắn mới từ người này...' : 'Về món: ' + item.food}
-              </Text>
-              <View className={`self-start px-2.5 py-1 rounded-md ${item.statusColor}`}>
-                <Text className={`text-[10px] font-bold uppercase tracking-wide ${item.statusTextColor}`}>
-                  {item.status}
-                </Text>
-              </View>
-            </View>
+      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <View className="gap-4">
+          {mockChats.map((chat, index) => (
+            <Animated.View key={chat.id} entering={FadeInUp.duration(500).delay(index * 100)}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                className="flex-row items-center gap-4 bg-white p-4 rounded-[28px] shadow-sm shadow-slate-200/50"
+                onPress={() => router.push(`/messages/${chat.id}` as any)}
+              >
+                <View className="relative">
+                  <Image source={{ uri: chat.avatar }} className="w-16 h-16 rounded-full bg-slate-100" />
+                  <Image source={{ uri: chat.image }} className="w-6 h-6 rounded-full border-2 border-white absolute -bottom-1 -right-1" />
+                </View>
 
-            {item.hasUnread && (
-              <View className="w-3 h-3 bg-danger rounded-full" />
-            )}
-          </TouchableOpacity>
-        )}
-      />
-    </SafeAreaView>
+                <View className="flex-1 justify-center">
+                  <View className="flex-row justify-between items-center mb-1">
+                    <Text className="font-extrabold text-base text-[#1A2E1A]" numberOfLines={1}>{chat.name}</Text>
+                    <Text className={`text-[11px] font-bold ${chat.unread > 0 ? 'text-[#2E7D32]' : 'text-slate-400'}`}>{chat.time}</Text>
+                  </View>
+                  <Text className="text-[#2E7D32] text-[11px] font-bold mb-1 bg-[#2E7D32]/10 self-start px-2 py-0.5 rounded-full">{chat.food}</Text>
+                  <View className="flex-row justify-between items-center">
+                    <Text className={`text-sm flex-1 pr-4 ${chat.unread > 0 ? 'text-[#1A2E1A] font-bold' : 'text-slate-500 font-medium'}`} numberOfLines={1}>
+                      {chat.message}
+                    </Text>
+                    {chat.unread > 0 && (
+                      <View className="w-5 h-5 bg-red-500 rounded-full items-center justify-center">
+                        <Text className="text-white text-[10px] font-bold">{chat.unread}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
   );
 }

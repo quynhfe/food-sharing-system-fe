@@ -1,56 +1,41 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+// app/_layout.tsx
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import '../global.css';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-const GreenShareLightTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    primary: '#2f7f34',
-    background: '#f6f8f6',
-    card: '#ffffff',
-    text: '#1a2e1a',
-    border: '#d4e8d4',
-    notification: '#ef5350',
-  },
-};
-
-const GreenShareDarkTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: '#2f7f34',
-    background: '#141e15',
-    card: '#1a2e1a',
-    text: '#f6f8f6',
-    border: '#2f4f2f',
-    notification: '#ef5350',
-  },
-};
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const [loaded, error] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
+
+  useEffect(() => {
+    if (loaded || error) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, error]);
+
+  if (!loaded && !error) {
+    return null;
+  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? GreenShareDarkTheme : GreenShareLightTheme}>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="food/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="request/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+    <>
+      <StatusBar style="dark" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="food/[id]" options={{ presentation: 'modal' }} />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    </>
   );
 }

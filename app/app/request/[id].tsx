@@ -1,96 +1,86 @@
+// app/food/[id].tsx (hoặc file hiển thị Request Status)
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Hourglass, Check, Circle, ArrowLeft } from 'lucide-react-native';
+import { View, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { Text } from '../../components/ui/text';
+import { ArrowLeft, Check, Hourglass } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Button } from '../../components/ui/Button';
 
-export default function RequestStatusScreen() {
-  const { id } = useLocalSearchParams();
-
-  const insets = useSafeAreaInsets();
+export default function RequestStatus() {
+  const params = useLocalSearchParams();
+  const food = {
+    title: params.title as string || 'Bánh mì thịt nướng',
+    poster: { name: params.posterName as string || 'Nguyễn Văn A' },
+    image: params.image as string || 'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&q=80&w=800'
+  };
 
   return (
-    <View className="flex-1 bg-bg-light" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
-      {/* Header */}
-      <View className="flex-row items-center px-5 py-3">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 rounded-full bg-white items-center justify-center border border-border-green shadow-sm shadow-black/5">
-          <ArrowLeft size={20} color="#1a2e1a" />
+    <View className="flex-1 bg-white relative">
+      <View className="flex-row items-center p-4 pt-12">
+        <TouchableOpacity onPress={() => router.replace('/(tabs)')} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100" activeOpacity={0.7}>
+          <ArrowLeft size={24} color="#0f172a" />
         </TouchableOpacity>
+        <Text className="ml-4 text-lg font-bold text-slate-900">Trạng thái yêu cầu</Text>
       </View>
 
-      <View className="flex-1 justify-center px-5">
-        <View className="bg-white rounded-2xl border border-border-green overflow-hidden shadow-sm shadow-black/5">
-          {/* Status Icon */}
-          <View className="items-center pt-10 pb-6">
-            <View className="w-16 h-16 bg-yellow-400 rounded-full items-center justify-center mb-4">
-              <Hourglass size={28} color="#ffffff" />
-            </View>
-            <View className="bg-yellow-100 px-3 py-1 rounded-full mb-2">
-              <Text className="text-xs font-bold text-yellow-700 uppercase">Đang chờ xác nhận</Text>
-            </View>
-            <Text className="text-xl font-bold text-text-main">Yêu cầu đang được xử lý</Text>
-          </View>
-
-          {/* Food Summary */}
-          <View className="mx-6 p-4 bg-primary-light/50 rounded-xl flex-row items-center gap-4 mb-6">
-            <View className="w-14 h-14 bg-primary/10 rounded-xl items-center justify-center">
-              <Text className="text-2xl">🍚</Text>
-            </View>
-            <View className="flex-1">
-              <Text className="font-bold text-text-main">Cơm tấm sườn bì chả</Text>
-              <Text className="text-xs text-text-secondary mt-1">Người đăng: Nguyễn Thị Lan</Text>
+      <ScrollView className="flex-1">
+        <View className="flex-col items-center px-6 py-8">
+          <View className="relative mb-6">
+            <View className="absolute inset-0 rounded-full bg-amber-100 opacity-75"></View>
+            <View className="relative h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+              <Text className="text-3xl">⏳</Text>
             </View>
           </View>
 
-          {/* Timeline */}
-          <View className="mx-6 mb-6">
-            <View className="flex-row items-start">
-              {/* Step 1 - Completed */}
-              <View className="flex-1 items-center">
-                <View className="w-8 h-8 rounded-full bg-primary items-center justify-center">
-                  <Check size={16} color="#ffffff" />
-                </View>
-                <Text className="text-[10px] text-text-secondary mt-2 text-center">Yêu cầu{'\n'}đã gửi</Text>
-              </View>
-              <View className="w-12 h-0.5 bg-primary mt-4" />
+          <View className="mb-4 flex-row items-center rounded-full bg-amber-50 px-4 py-1.5 border border-amber-100">
+            <Text className="text-xs font-bold uppercase tracking-wider text-amber-700">Đang chờ xác nhận</Text>
+          </View>
 
-              {/* Step 2 - Current */}
-              <View className="flex-1 items-center">
-                <View className="w-8 h-8 rounded-full border-2 border-yellow-400 bg-yellow-50 items-center justify-center">
-                  <Hourglass size={14} color="#f59e0b" />
-                </View>
-                <Text className="text-[10px] text-yellow-600 font-bold mt-2 text-center">Chờ{'\n'}xác nhận</Text>
-              </View>
-              <View className="w-12 h-0.5 bg-gray-200 mt-4" />
+          <Text className="mb-8 text-center text-2xl font-bold leading-tight text-slate-900">Yêu cầu đang được{"\n"}xử lý</Text>
 
-              {/* Step 3 - Pending */}
-              <View className="flex-1 items-center">
-                <View className="w-8 h-8 rounded-full border-2 border-gray-200 items-center justify-center">
-                  <Circle size={14} color="#d1d5db" />
-                </View>
-                <Text className="text-[10px] text-text-secondary mt-2 text-center">Hoàn{'\n'}tất</Text>
+          <View className="mb-10 flex-row w-full items-center justify-between px-2">
+            <View className="flex-col items-center gap-2">
+              <View className="h-8 w-8 items-center justify-center rounded-full bg-[#2E7D32]">
+                <Check size={16} color="#ffffff" />
               </View>
+              <Text className="text-[10px] font-medium text-slate-500">Đã gửi</Text>
+            </View>
+            <View className="h-[2px] flex-1 bg-[#2E7D32] mx-1 mb-6"></View>
+            <View className="flex-col items-center gap-2">
+              <View className="h-8 w-8 items-center justify-center rounded-full bg-amber-500">
+                <Hourglass size={16} color="#ffffff" />
+              </View>
+              <Text className="text-[10px] font-bold text-amber-600">Xác nhận</Text>
+            </View>
+            <View className="h-[2px] flex-1 bg-slate-200 mx-1 mb-6"></View>
+            <View className="flex-col items-center gap-2">
+              <View className="h-8 w-8 items-center justify-center rounded-full border-2 border-slate-200 bg-transparent">
+                <View className="w-2 h-2 rounded-full bg-slate-300"></View>
+              </View>
+              <Text className="text-[10px] font-medium text-slate-400">Hoàn tất</Text>
             </View>
           </View>
 
-          {/* Footer */}
-          <View className="px-6 pb-8">
-            <Text className="text-xs text-text-secondary text-center mb-6">
-              Chúng tôi sẽ thông báo cho bạn ngay khi người đăng phản hồi.
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.replace('/(tabs)')}
-              className="bg-primary rounded-xl py-3.5 items-center flex-row justify-center gap-2 mb-3"
-            >
-              <ArrowLeft size={16} color="#ffffff" />
-              <Text className="text-white font-bold">Quay lại trang chủ</Text>
-            </TouchableOpacity>
-            <TouchableOpacity className="items-center py-2">
-              <Text className="text-text-secondary text-sm underline">Hủy yêu cầu này</Text>
+          <View className="mb-6 w-full rounded-xl bg-white shadow-sm border border-slate-100 flex-row items-center p-3 gap-4">
+            <Image source={{ uri: food.image }} className="h-16 w-16 shrink-0 rounded-lg" />
+            <View className="flex-col gap-0.5 flex-1">
+              <Text className="font-bold text-slate-900">{food.title}</Text>
+              <Text className="text-sm text-slate-500">Người đăng: <Text className="font-medium text-[#2E7D32]">{food.poster.name}</Text></Text>
+            </View>
+          </View>
+
+          <Text className="mb-8 text-center text-sm leading-relaxed text-slate-500">
+            Bạn sẽ nhận được thông báo ngay khi người đăng phản hồi yêu cầu của bạn.
+          </Text>
+
+          <View className="flex-col w-full gap-4">
+            <Button onPress={() => router.replace('/(tabs)')} className="w-full shadow-sm shadow-[#2E7D32]/20">← Về trang chủ</Button>
+            <TouchableOpacity className="w-full py-2 items-center" activeOpacity={0.7}>
+              <Text className="text-sm font-semibold text-red-500">Hủy yêu cầu này</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }

@@ -1,113 +1,66 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Eye, EyeOff, Leaf, ArrowRight } from 'lucide-react-native';
-import { Link, router } from 'expo-router';
+// app/(auth)/login.tsx
+import React from 'react';
+import { View, TouchableOpacity, Image, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { Text } from '../../components/ui/text';
+import { Mail, Lock, Eye, Leaf } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function LoginScreen() {
-  const [showPassword, setShowPassword] = useState(false);
-
+export default function Login() {
   const insets = useSafeAreaInsets();
 
+  const handleLogin = () => {
+    router.replace('/(tabs)');
+  };
+
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
-      >
-        <ScrollView
-          className="flex-1 px-6"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1, paddingVertical: 40 }}
-        >
-          {/* Header */}
-          <View className="items-center mb-10">
-            <View className="w-16 h-16 bg-primary/10 rounded-full items-center justify-center mb-4">
-              <Leaf size={32} color="#2E7D32" fill="#2E7D32" />
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white">
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }}>
+        <View className="flex-col items-center pb-8">
+          <View className="flex-row items-center gap-2">
+            <View className="w-10 h-10 bg-[#2E7D32] rounded-full flex items-center justify-center shadow-sm">
+              <Leaf size={22} color="#fff" />
             </View>
-            <Text className="text-[28px] font-bold text-text-main mb-2 text-center tracking-tight">Chào mừng trở lại 👋</Text>
-            <Text className="text-base text-text-secondary text-center pr-4 font-medium">Đăng nhập để tiếp tục chia sẻ</Text>
+            <Text className="text-slate-800 text-2xl font-bold tracking-tight">GreenShare</Text>
+          </View>
+        </View>
+
+        <View className="px-6 pb-8">
+          <Text className="text-slate-800 text-3xl font-extrabold leading-tight">Chào mừng{"\n"}trở lại 👋</Text>
+          <Text className="text-slate-500 text-base mt-2 font-medium">Đăng nhập để tiếp tục chia sẻ</Text>
+        </View>
+
+        <View className="px-6 flex-col gap-5">
+          <Input label="Email" placeholder="Nhập email của bạn" keyboardType="email-address" autoCapitalize="none" startIcon={<Mail size={20} color="#94a3b8" />} />
+          <Input label="Mật khẩu" placeholder="Nhập mật khẩu" secureTextEntry startIcon={<Lock size={20} color="#94a3b8" />} endIcon={<Eye size={20} color="#94a3b8" />} />
+
+          <View className="flex-row justify-end">
+            <TouchableOpacity><Text className="text-[#2E7D32] text-sm font-bold">Quên mật khẩu?</Text></TouchableOpacity>
           </View>
 
-          <View className="space-y-4 mb-4">
-            {/* Email */}
-            <View>
-              <Text className="text-sm font-bold text-text-main mb-2 tracking-tight">Email</Text>
-              <TextInput
-                placeholder="Nhập email của bạn"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                className="bg-surface rounded-xl border border-border-green px-4 py-3.5 text-text-main text-base focus:border-primary focus:bg-white"
-              />
-            </View>
+          <Button onPress={handleLogin} className="w-full mt-4 shadow-md shadow-[#2E7D32]/20">Đăng nhập</Button>
+        </View>
 
-            {/* Password */}
-            <View>
-              <Text className="text-sm font-bold text-text-main mb-2 tracking-tight">Mật khẩu</Text>
-              <View className="relative">
-                <TextInput
-                  placeholder="Nhập mật khẩu"
-                  placeholderTextColor="#9CA3AF"
-                  secureTextEntry={!showPassword}
-                  className="bg-surface rounded-xl border border-border-green px-4 py-3.5 pr-12 text-text-main text-base focus:border-primary focus:bg-white"
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-4"
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} color="#9CA3AF" />
-                  ) : (
-                    <Eye size={20} color="#9CA3AF" />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
+        <View className="px-6 py-8 flex-row items-center gap-4">
+          <View className="h-px flex-1 bg-slate-100"></View>
+          <Text className="text-slate-400 text-xs font-bold uppercase tracking-wider">hoặc</Text>
+          <View className="h-px flex-1 bg-slate-100"></View>
+        </View>
 
-          <TouchableOpacity className="mb-8 self-end py-2">
-            <Text className="text-primary font-bold text-sm">Quên mật khẩu?</Text>
-          </TouchableOpacity>
+        <View className="px-6">
+          <Button variant="outline" className="w-full" startIcon={<Image source={{ uri: "https://www.svgrepo.com/show/475656/google-color.svg" }} className="w-6 h-6" />}>
+            Tiếp tục với Google
+          </Button>
+        </View>
 
-          {/* Login Button */}
-          <TouchableOpacity
-            onPress={() => router.replace('/(tabs)')}
-            className="bg-primary rounded-2xl py-4 flex-row justify-center items-center gap-2 mb-6 shadow-lg shadow-primary/30"
-          >
-            <Text className="text-white font-bold text-lg">Đăng nhập ngay</Text>
-            <ArrowRight size={20} color="white" />
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View className="flex-row items-center mb-6">
-            <View className="flex-1 h-px bg-border-green" />
-            <Text className="px-4 text-text-secondary text-sm font-medium">Hoặc tiếp tục với</Text>
-            <View className="flex-1 h-px bg-border-green" />
-          </View>
-
-          {/* Google */}
-          <TouchableOpacity className="bg-white border border-border-green shadow-sm rounded-xl py-3.5 items-center flex-row justify-center gap-3 mb-8">
-            <Image 
-               source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
-               className="w-5 h-5" 
-               resizeMode="contain"
-            />
-            <Text className="font-bold text-text-main text-base">Google</Text>
-          </TouchableOpacity>
-
-          {/* Register Link */}
-          <View className="flex-row justify-center mt-auto">
-            <Text className="text-text-secondary font-medium">Bạn chưa có tài khoản? </Text>
-            <Link href={"/(auth)/register" as any} asChild>
-              <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text className="text-primary font-bold">Đăng ký</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+        <View className="flex-1 justify-end items-center pt-10">
+          <Text className="text-slate-600 text-sm font-medium">
+            Chưa có tài khoản? <Text onPress={() => router.push('/(auth)/register')} className="text-[#2E7D32] font-extrabold">Đăng ký ngay</Text>
+          </Text>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
