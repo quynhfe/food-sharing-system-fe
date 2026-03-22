@@ -1,13 +1,13 @@
-import api from './api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import apiClient, { setAuthTokens, clearTokens } from './api-client';
+import { storage } from '@/utils/storage';
 
 export const authService = {
   register: async (userData: any) => {
     try {
-      const response = await api.post('/auth/register', userData);
+      const response = await apiClient.post('/auth/register', userData);
       if (response.data.success) {
-        await AsyncStorage.setItem('userToken', response.data.data.token);
-        await AsyncStorage.setItem('userInfo', JSON.stringify(response.data.data));
+        await storage.setItem('userToken', response.data.data.token);
+        await storage.setItem('userInfo', JSON.stringify(response.data.data));
       }
       return response.data;
     } catch (error: any) {
@@ -17,10 +17,10 @@ export const authService = {
 
   login: async (credentials: any) => {
     try {
-      const response = await api.post('/auth/login', credentials);
+      const response = await apiClient.post('/auth/login', credentials);
       if (response.data.success) {
-        await AsyncStorage.setItem('userToken', response.data.data.token);
-        await AsyncStorage.setItem('userInfo', JSON.stringify(response.data.data));
+        await storage.setItem('userToken', response.data.data.token);
+        await storage.setItem('userInfo', JSON.stringify(response.data.data));
       }
       return response.data;
     } catch (error: any) {
@@ -29,13 +29,13 @@ export const authService = {
   },
 
   logout: async () => {
-    await AsyncStorage.removeItem('userToken');
-    await AsyncStorage.removeItem('userInfo');
+    await storage.removeItem('userToken');
+    await storage.removeItem('userInfo');
   },
 
   getCurrentUser: async () => {
     try {
-      const userInfoString = await AsyncStorage.getItem('userInfo');
+      const userInfoString = await storage.getItem('userInfo');
       return userInfoString ? JSON.parse(userInfoString) : null;
     } catch {
       return null;
@@ -44,7 +44,7 @@ export const authService = {
 
   forgotPassword: async (email: string) => {
     try {
-      const response = await api.post('/auth/forgot-password', { email });
+      const response = await apiClient.post('/auth/forgot-password', { email });
       return response.data;
     } catch (error: any) {
       throw error.response?.data?.message || 'Lỗi kết nối mạng';
@@ -53,7 +53,7 @@ export const authService = {
 
   resetPassword: async (token: string, password: string) => {
     try {
-      const response = await api.put(`/auth/reset-password/${token}`, { password });
+      const response = await apiClient.put(`/auth/reset-password/${token}`, { password });
       return response.data;
     } catch (error: any) {
       throw error.response?.data?.message || 'Lỗi kết nối mạng';

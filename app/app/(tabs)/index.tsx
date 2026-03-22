@@ -1,40 +1,63 @@
 // app/(tabs)/index.tsx
-import React from 'react';
-import { View, TextInput, TouchableOpacity, Image, ScrollView } from 'react-native';
-import { Text } from '../../components/ui/text';
-import { Bell, Search, MapPin, Clock, Star, ChevronRight } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, TextInput, TouchableOpacity, ActivityIndicator, FlatList, RefreshControl } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { Bell, Search, MapPin, ChevronRight } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getFoodBadge, formatDistance, formatTimeLeft, FoodStatus } from '../../utils/helpers';
 
-const foods = [
-  {
-    id: '1',
-    title: 'Salad Ức Gà Áp Chảo',
-    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800',
-    status: 'EXPIRING_SOON' as FoodStatus,
-    poster: { name: 'Minh Tuấn', avatar: 'https://i.pravatar.cc/150?img=11' },
-    distance: 0.8,
-    expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Cơm Gạo Lứt & Rau Củ',
-    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800',
-    status: 'AVAILABLE' as FoodStatus,
-    poster: { name: 'Bích Phương', avatar: 'https://i.pravatar.cc/150?img=5' },
-    distance: 1.2,
-    expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
-  }
-];
+import { useFeedStore } from '@/features/feed/stores/feed.store';
+import { useInfiniteFeedQuery } from '@/features/feed/hooks/useFeedQuery';
+import { FoodCard } from '@/features/feed/components/FoodCard';
+import { FilterChips } from '@/features/feed/components/FilterChips';
+import { EmptyState } from '@/features/feed/components/EmptyState';
+import type { FoodPost } from '@/features/feed/types';
 
 export default function Home() {
   const insets = useSafeAreaInsets();
+  
+  // Local state for search input to prevent re-rendering list on every key press
+  const [searchInput, setSearchInput] = useState('');
 
-  return (
-    <View className="flex-1 bg-[#F8FAF8]">
-      <View style={{ paddingTop: insets.top }} className="bg-white px-6 pb-4 rounded-b-[32px] shadow-sm shadow-slate-200/50 z-10">
-        <View className="flex-row items-center justify-between py-2">
+  // Zustand Store
+  const { activeFilter, searchText, setActiveFilter, setSearchText } = useFeedStore();
+
+  // Coordinates - In a real app these come from Location service.
+  // Using Da Nang center to match our seed data for now.
+  const userLat = 16.0678;
+  const userLng = 108.2208;
+
+  // React Query
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+    isRefetching
+  } = useInfiniteFeedQuery({
+    filter: activeFilter,
+    search: searchText,
+    latitude: activeFilter === 'nearby' ? userLat : undefined,
+    longitude: activeFilter === 'nearby' ? userLng : undefined,
+    maxDistance: 15000 // 15km
+  });
+
+  // Flatten pages from infinite query
+  const posts = data?.pages.flatMap(page => page?.posts || []) || [];
+
+  const handleSearch = () => {
+    setSearchText(searchInput);
+  };
+
+  const renderHeader = () => (
+    <View className="bg-[#F8FAF8]">
+      <View style={{ paddingTop: insets.top }} className="bg-white pb-6 rounded-b-[32px] shadow-sm shadow-slate-200/50 z-10">
+        
+        {/* Top Bar */}
+        <View className="flex-row items-center justify-between px-6 py-2">
           <View className="flex-col">
             <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Vị trí của bạn</Text>
             <TouchableOpacity className="flex-row items-center gap-1" activeOpacity={0.7}>
@@ -49,87 +72,102 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
-        <View className="mt-4 relative flex-row items-center">
-          <View className="absolute left-4 z-10">
+        {/* Search Input */}
+        <View className="mt-4 px-6 relative flex-row items-center">
+          <View className="absolute left-10 z-10">
             <Search color="#94A3B8" size={20} />
           </View>
           <TextInput
+            value={searchInput}
+            onChangeText={setSearchInput}
+            onSubmitEditing={handleSearch}
             placeholder="Tìm món ăn, nguyên liệu..."
             placeholderTextColor="#94A3B8"
+            returnKeyType="search"
             className="flex-1 h-14 pl-12 pr-4 bg-[#F8FAF8] rounded-2xl text-sm font-medium text-slate-800 border border-slate-100"
           />
         </View>
-        <View className="py-6">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-            <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 bg-[#2E7D32] rounded-2xl  " activeOpacity={0.8}>
-              <MapPin size={18} color="white" />
-              <Text className="text-white text-sm font-bold">Gần bạn</Text>
-            </TouchableOpacity>
-            <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 bg-white rounded-2xl  border border-slate-100" activeOpacity={0.8}>
-              <Clock size={18} color="#64748B" />
-              <Text className="text-slate-600 text-sm font-bold">Sắp hết hạn</Text>
-            </TouchableOpacity>
-            <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 bg-white rounded-2xl  border border-slate-100" activeOpacity={0.8}>
-              <Star size={18} color="#64748B" />
-              <Text className="text-slate-600 text-sm font-bold">Đánh giá cao</Text>
-            </TouchableOpacity>
-          </ScrollView>
+
+        <View className="pt-6">
+          <FilterChips 
+            activeFilter={activeFilter} 
+            onSelectFilter={setActiveFilter} 
+          />
         </View>
+
       </View>
 
-      <ScrollView className="flex-1 mt-5" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+      <View className="px-6 pt-5 pb-2 flex-row items-center justify-between">
+        <Text className="text-xl font-extrabold text-slate-800">
+          {activeFilter === 'nearby' ? 'Gần bạn nhất' : activeFilter === 'expiring' ? 'Sắp hết hạn' : 'Mới chia sẻ'}
+        </Text>
+        <Text className="text-slate-500 font-medium text-sm">
+          {data?.pages[0]?.pagination?.total || 0} kết quả
+        </Text>
+      </View>
+    </View>
+  );
 
+  const renderFooter = () => {
+    if (!isFetchingNextPage) return <View className="h-20" />; // bottom padding
+    return (
+      <View className="py-6 items-center">
+        <ActivityIndicator size="small" color="#2E7D32" />
+      </View>
+    );
+  };
 
-        <View className="px-6">
-          <View className="flex-row items-center justify-between mb-5">
-            <Text className="text-xl font-extrabold text-slate-800">Mới chia sẻ</Text>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Text className="text-[#2E7D32] text-sm font-bold">Xem tất cả</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View className="flex flex-col gap-5">
-            {foods.map(food => {
-              const badge = getFoodBadge(food.status);
-              return (
-                <TouchableOpacity
-                  key={food.id}
-                  onPress={() => router.push(`/food/${food.id}`)}
-                  activeOpacity={0.9}
-                  className="bg-white rounded-3xl shadow-sm border border-slate-100/80 overflow-hidden"
-                >
-                  <View className="relative h-44 w-full bg-slate-100">
-                    <Image source={{ uri: food.image }} className="w-full h-full" resizeMode="cover" />
-                    <View className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full flex-row items-center gap-1.5 shadow-sm">
-                      <View className={`w-2 h-2 rounded-full ${badge.color === 'bg-red-500' ? 'bg-red-500' : 'bg-[#2E7D32]'}`}></View>
-                      <Text className="text-slate-800 text-[11px] font-bold">{badge.text}</Text>
-                    </View>
-                  </View>
-                  <View className="p-5">
-                    <Text className="font-extrabold text-lg text-slate-800 mb-4">{food.title}</Text>
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center gap-2.5">
-                        <Image source={{ uri: food.poster.avatar }} className="w-8 h-8 rounded-full bg-slate-200" />
-                        <Text className="text-sm text-slate-600 font-bold">{food.poster.name}</Text>
-                      </View>
-                      <View className="flex-row items-center gap-3.5">
-                        <View className="flex-row items-center gap-1.5">
-                          <MapPin size={14} color="#94A3B8" />
-                          <Text className="text-xs font-bold text-slate-500">{formatDistance(food.distance)}</Text>
-                        </View>
-                        <View className="flex-row items-center gap-1.5">
-                          <Clock size={14} color="#94A3B8" />
-                          <Text className="text-xs font-bold text-slate-500">{formatTimeLeft(food.expiresAt)}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+  const renderEmptyState = () => {
+    if (isLoading) {
+      return (
+        <View className="pt-20 items-center">
+          <ActivityIndicator size="large" color="#2E7D32" />
         </View>
-      </ScrollView>
+      );
+    }
+    
+    if (isError) {
+      return <EmptyState title="Đã có lỗi xảy ra" description="Vui lòng kiểm tra kết nối mạng và thử lại." />;
+    }
+
+    return <EmptyState isSearching={Boolean(searchText)} />;
+  };
+
+  return (
+    <View className="flex-1 bg-[#F8FAF8]">
+      {renderHeader()}
+      <FlatList<FoodPost>
+        data={posts}
+        keyExtractor={(item) => item._id}
+        renderItem={({ item }) => (
+          <View className="px-6">
+            <FoodCard post={item} onPress={() => router.push(`/food/${item._id}`)} />
+          </View>
+        )}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmptyState}
+        
+        // Pull to refresh
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching && !isFetchingNextPage}
+            onRefresh={refetch}
+            tintColor="#2E7D32"
+            colors={['#2E7D32']}
+          />
+        }
+        
+        // Infinite scroll
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 80 }}
+      />
     </View>
   );
 }
