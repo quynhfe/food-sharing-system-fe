@@ -1,13 +1,16 @@
-export type FoodStatus = 'AVAILABLE' | 'EXPIRING_SOON' | 'EXPIRED';
+export type FoodStatus = 'active' | 'hidden' | 'expired' | 'completed' | 'deleted';
 
 export const getFoodBadge = (status: FoodStatus) => {
   switch (status) {
-    case 'AVAILABLE':
+    case 'active':
       return { color: 'bg-green-500', dot: 'bg-white', text: 'Còn nhận' };
-    case 'EXPIRING_SOON':
-      return { color: 'bg-red-500', dot: 'bg-white', text: 'Sắp hết hạn' };
-    case 'EXPIRED':
+    case 'expired':
       return { color: 'bg-slate-500', dot: 'bg-white', text: 'Đã hết hạn' };
+    case 'completed':
+      return { color: 'bg-blue-500', dot: 'bg-white', text: 'Đã tặng' };
+    case 'hidden':
+    case 'deleted':
+      return { color: 'bg-red-500', dot: 'bg-white', text: 'Đã ẩn' };
     default:
       return { color: 'bg-slate-500', dot: 'bg-white', text: 'Không rõ' };
   }

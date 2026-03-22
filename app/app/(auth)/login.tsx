@@ -17,20 +17,8 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Lỗi', 'Vui lòng nhập email và mật khẩu.');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      await authService.login({ email, password });
-      router.replace('/(tabs)');
-    } catch (error: any) {
-      Alert.alert('Lỗi đăng nhập', error.toString());
-    } finally {
-      setIsLoading(false);
-    }
+    // Tạm thời bỏ qua validate và API để vào thẳng Home Test
+    router.replace('/(tabs)');
   };
 
   return (

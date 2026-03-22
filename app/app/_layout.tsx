@@ -1,9 +1,11 @@
 // app/_layout.tsx
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { queryClient } from '@/lib/query-client';
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync();
@@ -28,7 +30,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
@@ -36,6 +38,6 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
         <Stack.Screen name="food/[id]" options={{ presentation: 'modal' }} />
       </Stack>
-    </>
+    </QueryClientProvider>
   );
 }
