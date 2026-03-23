@@ -42,7 +42,11 @@ apiClient.interceptors.request.use(
     const token = await storage.getItem(TOKEN_KEY);
 
     if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+      if (typeof config.headers.set === 'function') {
+        config.headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
 
     return config;

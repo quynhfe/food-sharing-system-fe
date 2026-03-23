@@ -1,8 +1,15 @@
 // app/(tabs)/_layout.tsx
+import { useEffect } from 'react';
 import { CustomTabBar } from '@/components/ui/CustomTabBar';
 import { Tabs } from 'expo-router';
+import { useWishlistStore } from '@/features/wishlist/stores/wishlist.store';
 
 export default function TabsLayout() {
+  useEffect(() => {
+    // Sync wishlist map from server on app load
+    useWishlistStore.getState().fetchAllWishlistMap();
+  }, []);
+
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}

@@ -26,6 +26,13 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cho phép FoodShare truy cập thư viện ảnh để tải ảnh món ăn lên.",
+          "cameraPermission": "Cho phép FoodShare sử dụng máy ảnh để chụp ảnh món ăn."
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
