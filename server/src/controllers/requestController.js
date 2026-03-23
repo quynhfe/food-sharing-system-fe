@@ -1,6 +1,8 @@
 import Request from '../models/Request.js';
 import Conversation from '../models/Conversation.js';
+import User from '../models/User.js';
 import { sendSuccess, sendError } from '../helpers/responseHelper.js';
+import { EXP_PER_SHARE } from './impactController.js';
 
 /**
  * @desc  Mark a request as completed
@@ -33,6 +35,9 @@ export const completeRequest = async (req, res, next) => {
 
     request.status = 'completed';
     await request.save();
+
+    // Award EXP to donor
+    await User.findByIdAndUpdate(userId, { $inc: { exp: EXP_PER_SHARE } });
 
     // Close the linked conversation
     await Conversation.findOneAndUpdate(

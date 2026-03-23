@@ -2,7 +2,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Platform } from 'react-native';
 import { Text } from './text';
-import { Home, Compass, PlusCircle, MessageCircle, User } from 'lucide-react-native';
+import { Home, Compass, PlusCircle, MessageCircle, User, Globe } from 'lucide-react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,6 +14,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         explore: Compass,
         create: PlusCircle,
         messages: MessageCircle,
+        impact: Globe,
         profile: User,
     };
 

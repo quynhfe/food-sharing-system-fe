@@ -15,7 +15,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="explore" options={{ title: 'Khám phá' }} />
       <Tabs.Screen name="create" options={{ title: 'Đăng' }} />
       <Tabs.Screen name="messages" options={{ title: 'Tin nhắn' }} />
+      <Tabs.Screen name="impact" options={{ title: 'Tác động' }} />
       <Tabs.Screen name="profile" options={{ title: 'Hồ sơ' }} />
     </Tabs>
   );
-}
+}

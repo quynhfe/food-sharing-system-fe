@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema(
       totalCompleted: { type: Number, default: 0 },
       totalCancelled: { type: Number, default: 0 },
     },
+    exp: { type: Number, default: 0, min: 0 }, // EXP points for leveling
     status: { type: String, enum: ['active', 'suspended', 'banned'], default: 'active' },
     suspendedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     suspendedAt: { type: Date },
