@@ -30,7 +30,7 @@ const foodPostSchema = new mongoose.Schema(
     images: [{ type: String }],
     status: {
       type: String,
-      enum: ['active', 'hidden', 'expired', 'completed', 'deleted'],
+      enum: ['active', 'hidden', 'expired', 'completed', 'deleted', 'reserved'],
       default: 'active',
     },
     isLocked: { type: Boolean, default: false },

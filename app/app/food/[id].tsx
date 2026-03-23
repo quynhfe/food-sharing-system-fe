@@ -1,6 +1,6 @@
 // app/food/[id].tsx
-import React, { useState } from 'react';
-import { View, Image, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Image, TouchableOpacity, ScrollView, Modal, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { ArrowLeft, Heart, MapPin, Clock, Calendar, MessageCircle, CheckCircle } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,11 +9,19 @@ import { Text } from '../../components/ui/text';
 import { Badge } from '../../components/ui/badge';
 import { formatDistance, formatTimeLeft } from '../../utils/helpers';
 import { Button } from '@/components/ui/Button';
+import { createRequest } from '../../services/requestService';
+import { authService } from '../../services/authService';
 
 export default function FoodDetail() {
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    authService.getCurrentUser().then(setCurrentUser).catch(console.error);
+  }, []);
 
   // Mock data fallback
   const food = {
@@ -23,6 +31,28 @@ export default function FoodDetail() {
     poster: { name: 'Lê Minh Anh', avatar: 'https://i.pravatar.cc/150?img=9' },
     distance: 0.8,
     expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+  };
+
+  const handleConfirmRequest = async () => {
+    setLoading(true);
+    try {
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(food.id);
+      if (!isValidObjectId) {
+         Alert.alert('Lưu ý', 'ID bài viết mẫu không hợp lệ cho API. Tạo request giả lập thành công.');
+         setShowConfirm(false);
+         setLoading(false);
+         router.push({ pathname: '/request/[id]', params: { id: 'mockrequest123' } });
+         return;
+      }
+
+      const response = await createRequest(food.id);
+      setShowConfirm(false);
+      setLoading(false);
+      router.push({ pathname: '/request/[id]', params: { id: response.data._id } });
+    } catch (error: any) {
+      setLoading(false);
+      Alert.alert('Gửi yêu cầu thất bại', error.toString());
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -142,12 +172,21 @@ export default function FoodDetail() {
           >
             <MessageCircle size={24} color="#1A2E1A" />
           </Button>
-          <Button
-            className="flex-1 h-14 rounded-2xl bg-[#2E7D32] shadow-xl shadow-[#2E7D32]/30"
-            onPress={() => setShowConfirm(true)}
-          >
-            <Text className="text-white font-extrabold text-lg">Yêu cầu nhận ngay</Text>
-          </Button>
+          {currentUser?.fullName === food.poster.name ? (
+            <Button
+              className="flex-1 h-14 rounded-2xl bg-slate-50 border border-slate-200 shadow-sm"
+              onPress={() => router.push({ pathname: '/manage-requests', params: { postId: food.id } })}
+            >
+              <Text className="text-[#2E7D32] font-extrabold text-lg">Duyệt Yêu cầu</Text>
+            </Button>
+          ) : (
+            <Button
+              className="flex-1 h-14 rounded-2xl bg-[#2E7D32] shadow-xl shadow-[#2E7D32]/30"
+              onPress={() => setShowConfirm(true)}
+            >
+              <Text className="text-white font-extrabold text-lg">Yêu cầu nhận ngay</Text>
+            </Button>
+          )}
         </View>
       </View>
 
@@ -161,7 +200,7 @@ export default function FoodDetail() {
           <Animated.View
             entering={SlideInDown.duration(400).springify()}
             className="bg-white rounded-t-[40px] px-6 pt-4 pb-10 z-40 max-h-[80%]"
-            style={{ paddingBottom: Math.max(insets.bottom, 24) }}
+            style={{ backgroundColor: 'white', paddingBottom: Math.max(insets.bottom, 24) }}
           >
             <View className="items-center mb-8">
               <View className="w-12 h-1.5 bg-slate-200 rounded-full" />
@@ -180,19 +219,18 @@ export default function FoodDetail() {
             <View className="w-full gap-3">
               <Button
                 className="w-full h-14 rounded-2xl bg-[#2E7D32] shadow-lg shadow-[#2E7D32]/20"
-                onPress={() => {
-                  setShowConfirm(false);
-                  router.push({ pathname: '/food/[id]', params: { id: food.id } }); // Điều hướng tới màn trạng thái
-                }}
+                onPress={handleConfirmRequest}
+                disabled={loading}
               >
-                <Text className="text-white font-extrabold text-lg">Xác nhận gửi</Text>
+                {loading ? <ActivityIndicator color="white" /> : <Text className="text-white font-extrabold text-lg">Xác nhận gửi</Text>}
               </Button>
               <Button
                 variant="ghost"
                 className="w-full h-14 rounded-2xl bg-[#F8FAF8]"
-                onPress={() => setShowConfirm(false)}
+                onPress={() => !loading && setShowConfirm(false)}
+                disabled={loading}
               >
-                <Text className="text-[#1A2E1A] font-extrabold text-lg">Hủy</Text>
+                <Text className="#1A2E1A font-extrabold text-lg">Hủy</Text>
               </Button>
             </View>
           </Animated.View>

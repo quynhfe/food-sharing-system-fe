@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, TouchableOpacity, Image, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Settings, Award, Leaf, Heart, ChevronRight, LogOut, Package } from 'lucide-react-native';
+import { Settings, Award, Leaf, Heart, ChevronRight, LogOut, Package, Clock } from 'lucide-react-native';
 import { Text } from '../../components/ui/text';
 import { Card } from '../../components/ui/card';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
@@ -76,10 +76,10 @@ export default function Profile() {
             <View className="flex-1">
               <Text className="text-2xl font-extrabold text-white mb-1">{user?.fullName || 'Người dùng'}</Text>
               <Text className="text-white/80 font-medium mb-2">{user?.email || 'Email chưa cập nhật'}</Text>
-              <View className="bg-white/20 self-start px-3 py-1 rounded-full flex-row items-center gap-1.5">
+              <TouchableOpacity onPress={() => router.push(`/reviews/${user?._id}` as any)} className="bg-white/20 self-start px-3 py-1 rounded-full flex-row items-center gap-1.5" activeOpacity={0.8}>
                 <Award size={14} color="#FDE047" />
-                <Text className="text-white font-bold text-xs">Người tiên phong</Text>
-              </View>
+                <Text className="text-white font-bold text-xs">Xem Đánh giá ⭐</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -116,12 +116,13 @@ export default function Profile() {
           <Text className="text-xl font-extrabold text-[#1A2E1A] mb-2">Tài khoản</Text>
 
           {[
-            { icon: Package, label: 'Bài đăng của tôi', color: '#3B82F6', bg: 'bg-blue-50' },
-            { icon: Heart, label: 'Yêu cầu của tôi', color: '#EC4899', bg: 'bg-pink-50' },
-            { icon: Award, label: 'Huy hiệu & Thành tích', color: '#F59E0B', bg: 'bg-amber-50' },
+            { icon: Package, label: 'Bài đăng của tôi', color: '#3B82F6', bg: 'bg-blue-50', route: '/(tabs)/create' },
+            { icon: Clock, label: 'Lịch sử giao dịch', color: '#10B981', bg: 'bg-green-50', route: '/history' },
+            { icon: Heart, label: 'Yêu cầu của tôi', color: '#EC4899', bg: 'bg-pink-50', route: '/(tabs)/messages' },
+            { icon: Award, label: 'Huy hiệu & Thành tích', color: '#F59E0B', bg: 'bg-amber-50', route: '/(tabs)/profile' },
           ].map((item, index) => (
             <Animated.View key={index} entering={FadeInRight.duration(500).delay(index * 100)}>
-              <TouchableOpacity activeOpacity={0.8} className="flex-row items-center justify-between bg-white p-4 rounded-[24px] shadow-sm border border-slate-100">
+              <TouchableOpacity onPress={() => router.push(item.route as any)} activeOpacity={0.8} className="flex-row items-center justify-between bg-white p-4 rounded-[24px] shadow-sm border border-slate-100">
                 <View className="flex-row items-center gap-4">
                   <View className={`w-12 h-12 ${item.bg} rounded-full items-center justify-center`}>
                     <item.icon size={22} color={item.color} />

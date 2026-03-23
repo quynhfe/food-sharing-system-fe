@@ -1,9 +1,11 @@
 import express from 'express';
-// import { getUsers } from '../controllers/userController.js';
+import { getUserTransactions } from '../controllers/requestController.js';
+import { getUserReviews } from '../controllers/ratingController.js';
+import { protect } from '../helpers/authMiddleware.js';
 
 const router = express.Router();
 
-// Delete placeholder for now, or just leave it blank if no controller
-// router.get('/', getUsers);
+router.get('/me/transactions', protect, getUserTransactions);
+router.get('/:id/reviews', getUserReviews);
 
 export default router;
