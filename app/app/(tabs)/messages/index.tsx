@@ -100,26 +100,31 @@ export default function MessagesScreen() {
       <TouchableOpacity
         className="flex-row gap-3 p-3 rounded-2xl active:bg-white"
         style={{ gap: 12 }}
-        onPress={() => router.push(`/(tabs)/messages/${item._id}` as any)}
+        onPress={() => router.push(`/messages/${item._id}` as any)}
         activeOpacity={0.7}
       >
         {/* Avatar */}
         <View className="relative" style={{ width: 56, height: 56 }}>
-          {item.postImage ? (
+          {item.otherUser.avatar ? (
             <Image
-              source={{ uri: item.postImage }}
-              className="w-14 h-14 rounded-xl border border-green-100"
+              source={{ uri: item.otherUser.avatar }}
+              className="w-14 h-14 rounded-full border border-slate-100"
               resizeMode="cover"
             />
           ) : (
-            <View className="w-14 h-14 rounded-xl bg-primary/10 items-center justify-center border border-primary/20">
+            <View className="w-14 h-14 rounded-full bg-primary/10 items-center justify-center border border-primary/20">
               <Text className="text-primary font-bold text-lg">
                 {getInitials(item.otherUser.fullName)}
               </Text>
             </View>
           )}
+          {item.postImage && (
+            <View className="absolute -bottom-1 -left-1 w-6 h-6 rounded-lg border-2 border-white overflow-hidden bg-white shadow-sm">
+                <Image source={{ uri: item.postImage }} className="w-full h-full" resizeMode="cover" />
+            </View>
+          )}
           {item.status === 'open' && (
-            <View className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+            <View className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
           )}
         </View>
 

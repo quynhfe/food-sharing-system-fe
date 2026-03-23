@@ -1,6 +1,59 @@
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
+import Transaction from '../models/Transaction.js';
 import { sendSuccess, sendError } from '../helpers/responseHelper.js';
+
+/**
+ * @desc  Find the conversation tied to a specific food post for the current user.
+ *        Works for both the donor (post owner) and the receiver (requester).
+ * @route GET /api/v1/chats/by-post/:postId
+ * @access Private
+ */
+export const getConversationByPost = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { postId } = req.params;
+
+    // Find a transaction for this post that involves the current user
+    const transaction = await Transaction.findOne({
+      postId,
+      $or: [{ donorId: userId }, { receiverId: userId }],
+    });
+
+    if (!transaction) {
+      return sendError(res, 'Chưa có cuộc trò chuyện nào cho bài đăng này', 404);
+    }
+
+    // Find the conversation linked to this transaction
+    const conversation = await Conversation.findOne({ transactionId: transaction._id })
+      .populate('donorId', 'fullName avatar')
+      .populate('receiverId', 'fullName avatar')
+      .populate({
+        path: 'transactionId',
+        populate: { path: 'postId', model: 'FoodPost', select: 'title images' },
+      });
+
+    if (!conversation) {
+      return sendError(res, 'Không tìm thấy cuộc trò chuyện', 404);
+    }
+
+    const isUserDonor = conversation.donorId._id.toString() === userId.toString();
+    const otherUser = isUserDonor ? conversation.receiverId : conversation.donorId;
+    const post = conversation.transactionId?.postId;
+
+    return sendSuccess(res, {
+      _id: conversation._id,
+      otherUser: { _id: otherUser._id, fullName: otherUser.fullName, avatar: otherUser.avatar },
+      postTitle: post?.title || '',
+      postImage: post?.images?.[0] || null,
+      lastMessage: conversation.lastMessage,
+      status: conversation.status,
+      updatedAt: conversation.updatedAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
  * @desc  Get all conversations for the logged-in user
@@ -104,6 +157,7 @@ export const getChatMessages = async (req, res, next) => {
     const conversationInfo = {
       _id: conversation._id,
       transactionId: conversation.transactionId?._id ?? conversation.transactionId,
+      requestId: conversation.transactionId?.requestId ?? null,
       donorId: conversation.donorId._id,
       receiverId: conversation.receiverId._id,
       status: conversation.status,

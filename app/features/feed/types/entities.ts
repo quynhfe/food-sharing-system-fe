@@ -30,4 +30,5 @@ export interface FoodPost {
   createdAt: string;
   updatedAt: string;
   calculatedDistance?: number; // Only present when filter=nearby
+  pendingRequestsCount?: number; // Count of pending requests for the donor
 }

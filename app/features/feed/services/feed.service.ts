@@ -13,6 +13,7 @@ export class FeedService {
       if (params.limit) queryParams.append('limit', String(params.limit));
       if (params.search) queryParams.append('search', params.search);
       if (params.filter) queryParams.append('filter', params.filter);
+      if (params.category) queryParams.append('category', params.category);
       
       // Geo params
       if (params.latitude !== undefined && params.longitude !== undefined) {

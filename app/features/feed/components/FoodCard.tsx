@@ -40,6 +40,13 @@ export function FoodCard({ post, onPress }: FoodCardProps) {
           <View className={`w-2 h-2 rounded-full ${badge.color === 'bg-red-500' ? 'bg-red-500' : 'bg-[#2E7D32]'}`}></View>
           <Text className="text-slate-800 text-[11px] font-bold">{badge.text}</Text>
         </View>
+
+        {/* Counter Badge for Owners */}
+        {(post.pendingRequestsCount ?? 0) > 0 && (
+          <View className="absolute top-4 right-4 bg-red-500 min-w-[24px] h-6 rounded-full items-center justify-center px-2 border-2 border-white shadow-md">
+            <Text className="text-white text-[10px] font-extrabold">{post.pendingRequestsCount} YÊU CẦU</Text>
+          </View>
+        )}
       </View>
       <View className="p-5">
         <Text className="font-extrabold text-lg text-slate-800 mb-4" numberOfLines={2}>

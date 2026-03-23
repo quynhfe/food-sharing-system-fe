@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import {
   ShoppingBag,
   Recycle,
@@ -20,11 +20,11 @@ import {
   Heart,
   Lock,
   Zap,
+  MessageCircle
 } from 'lucide-react-native';
 import { impactService, PeriodFilter, ChartMonth } from '@/services/impactService';
 
 const PRIMARY = '#218c28';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Mini Bar Chart (no lib needed) ────────────────────────────
 function BarChart({ data }: { data: ChartMonth[] }) {
@@ -178,9 +178,18 @@ export default function ImpactScreen() {
           paddingBottom: 8,
         }}
       >
-        <Text style={{ fontSize: 22, fontWeight: '700', color: '#0F172A', marginBottom: 12 }}>
-          Tác động của tôi 🌱
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: '#0F172A' }}>
+            Tác động của tôi 🌱
+          </Text>
+          <TouchableOpacity 
+            onPress={() => router.push('/(tabs)/messages/index')}
+            style={{ width: 44, height: 44, backgroundColor: '#fff', borderRadius: 22, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}
+            activeOpacity={0.8}
+          >
+            <MessageCircle size={22} color="#334155" />
+          </TouchableOpacity>
+        </View>
 
         {/* Filter pills */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -219,7 +228,7 @@ export default function ImpactScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, gap: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140, gap: 16 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />

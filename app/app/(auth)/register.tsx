@@ -1,6 +1,6 @@
 // app/(auth)/register.tsx
 import React, { useState } from 'react';
-import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text } from '../../components/ui/text';
 import { Mail, Lock, Eye, ArrowLeft, User } from 'lucide-react-native';
 import { router } from 'expo-router';
@@ -8,6 +8,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { authService } from '../../services/authService';
+import { Toast } from '../../components/ui/Toast';
+import { useToast } from '../../hooks/useToast';
 
 export default function Register() {
   const insets = useSafeAreaInsets();
@@ -17,25 +19,30 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
 
   const handleRegister = async () => {
     if (!fullName || !email || !password) {
-      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin bắt buộc.');
+      showToast('Vui lòng điền đầy đủ thông tin bắt buộc.', 'warning');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp.');
+      showToast('Mật khẩu xác nhận không khớp.', 'warning');
+      return;
+    }
+    if (!agreedToTerms) {
+      showToast('Bạn phải đồng ý với Điều khoản & Chính sách bảo mật.', 'warning');
       return;
     }
 
     try {
       setIsLoading(true);
       await authService.register({ fullName, email, password });
-      Alert.alert('Thành công', 'Đăng ký tài khoản thành công', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)') }
-      ]);
+      showToast('Đăng ký tài khoản thành công!', 'success');
+      setTimeout(() => router.replace('/(tabs)'), 1200);
     } catch (error: any) {
-      Alert.alert('Lỗi', error.toString());
+      showToast(error.toString(), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -43,6 +50,12 @@ export default function Register() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white">
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 20 }}>
         <View className="flex-row items-center px-4 py-4">
           <TouchableOpacity onPress={() => router.back()} className="w-12 h-12 items-center justify-center rounded-full bg-slate-50" activeOpacity={0.7}>
@@ -104,12 +117,18 @@ export default function Register() {
             onChangeText={setConfirmPassword}
           />
 
-          <View className="flex-row items-start gap-3 mt-2">
-            <View className="mt-1 w-5 h-5 rounded-[6px] border-[1.5px] border-slate-300"></View>
+          <TouchableOpacity 
+            className="flex-row items-start gap-3 mt-2" 
+            activeOpacity={0.8}
+            onPress={() => setAgreedToTerms(!agreedToTerms)}
+          >
+            <View className={`mt-1 w-5 h-5 rounded-[6px] border-[1.5px] items-center justify-center ${agreedToTerms ? 'bg-[#2E7D32] border-[#2E7D32]' : 'border-slate-300 bg-white'}`}>
+              {agreedToTerms && <Text className="text-white text-xs font-extrabold">✓</Text>}
+            </View>
             <Text className="text-sm text-slate-600 flex-1 font-medium leading-relaxed">
               Tôi đồng ý với <Text className="text-[#2E7D32] font-bold">Điều khoản</Text> & <Text className="text-[#2E7D32] font-bold">Chính sách bảo mật</Text>
             </Text>
-          </View>
+          </TouchableOpacity>
 
           <Button 
             onPress={handleRegister} 

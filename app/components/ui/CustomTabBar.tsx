@@ -29,6 +29,8 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         >
             {state.routes.map((route, index) => {
                 const { options } = descriptors[route.key];
+                const allowedRoutes = ['index', 'explore', 'create', 'impact', 'profile'];
+                if (!allowedRoutes.includes(route.name)) return null;
                 const label = options.title !== undefined ? options.title : route.name;
                 const isFocused = state.index === index;
                 const Icon = icons[route.name as keyof typeof icons] || Home;

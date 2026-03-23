@@ -25,3 +25,13 @@ export const protect = async (req, res, next) => {
     return sendError(res, 'Không có token xác thực', 401);
   }
 };
+
+/**
+ * Require authenticated admin user.
+ * - Assumes `protect` middleware has already set `req.user`.
+ */
+export const requireAdmin = (req, res, next) => {
+  if (!req.user) return sendError(res, 'Không có thông tin người dùng', 401);
+  if (req.user.role !== 'admin') return sendError(res, 'Không có quyền', 403);
+  next();
+};

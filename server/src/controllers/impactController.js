@@ -1,6 +1,7 @@
 import Request from '../models/Request.js';
 import FoodPost from '../models/FoodPost.js';
 import User from '../models/User.js';
+import ImpactRecord from '../models/ImpactRecord.js';
 import { sendSuccess, sendError } from '../helpers/responseHelper.js';
 
 // ─── Level Config ──────────────────────────────────────────────
@@ -54,69 +55,105 @@ export function getLevelInfo(exp) {
 const UNIT_WEIGHT = { kg: 1, portion: 0.5, box: 1.5, item: 0.3 };
 // kg CO2 saved per kg food (avoiding landfill)
 const CO2_PER_KG = 2.5;
+// Meals per kg
+const MEALS_PER_KG = 3;
 
 function toKg(quantity, unit) {
   return quantity * (UNIT_WEIGHT[unit] ?? 0.5);
 }
 
 /**
- * @desc  Get impact stats for the logged-in user
- * @route GET /api/v1/impact/stats?period=week|month|all
+ * @desc  Get impact stats for a user
+ * @route GET /api/v1/impact/user/:id?period=week|month|all
+ * @route GET /api/v1/impact/stats?period=week|month|all (backward comp)
  * @access Private
  */
 export const getImpactStats = async (req, res, next) => {
   try {
-    const userId = req.user._id;
+    const userId = req.params.id || req.user._id;
     const { period = 'all' } = req.query;
 
-    // Date filter
     let dateFilter = {};
     const now = new Date();
     if (period === 'week') {
       const weekAgo = new Date(now);
       weekAgo.setDate(weekAgo.getDate() - 7);
-      dateFilter = { updatedAt: { $gte: weekAgo } };
+      dateFilter = { createdAt: { $gte: weekAgo } };
     } else if (period === 'month') {
       const monthAgo = new Date(now);
       monthAgo.setMonth(monthAgo.getMonth() - 1);
-      dateFilter = { updatedAt: { $gte: monthAgo } };
+      dateFilter = { createdAt: { $gte: monthAgo } };
     }
 
-    // Fetch completed requests where user is donor
-    const completedRequests = await Request.find({
+    // Count posts donated (any status) — shows immediately after posting
+    const totalShared = await FoodPost.countDocuments({
       donorId: userId,
-      status: 'completed',
       ...dateFilter,
-    }).populate('postId', 'quantity unit');
+    });
 
-    const totalShared = completedRequests.length;
+    // Aggregate completed impact records for kg/co2 metrics
+    const impacts = await ImpactRecord.find({
+      donorId: userId,
+      ...dateFilter,
+    });
 
+    let totalMealsShared = 0;
     let totalFoodKg = 0;
-    for (const req of completedRequests) {
-      const post = req.postId;
-      if (post) {
-        totalFoodKg += toKg(req.requestedQty, post.unit);
-      }
+    let totalCo2Kg = 0;
+
+    for (const impact of impacts) {
+      totalMealsShared += impact.mealsShared || 0;
+      totalFoodKg += impact.foodSavedKg || 0;
+      totalCo2Kg += impact.co2ReducedKg || 0;
     }
 
-    const totalCo2Kg = parseFloat((totalFoodKg * CO2_PER_KG).toFixed(2));
-    totalFoodKg = parseFloat(totalFoodKg.toFixed(2));
-
-    // Get user EXP & level info
     const user = await User.findById(userId).select('exp');
     const exp = user?.exp ?? 0;
     const levelInfo = getLevelInfo(exp);
 
     return sendSuccess(res, {
       totalShared,
-      totalFoodKg,
-      totalCo2Kg,
+      totalMealsShared: parseFloat(totalMealsShared.toFixed(2)),
+      totalFoodKg: parseFloat(totalFoodKg.toFixed(2)),
+      totalCo2Kg: parseFloat(totalCo2Kg.toFixed(2)),
       ...levelInfo,
     });
   } catch (error) {
     next(error);
   }
 };
+
+/**
+ * @desc  Get global impact stats
+ * @route GET /api/v1/impact/global
+ * @access Public
+ */
+export const getGlobalImpact = async (req, res, next) => {
+  try {
+    const impacts = await ImpactRecord.find();
+    let totalMealsShared = 0;
+    let totalFoodKg = 0;
+    let totalCo2Kg = 0;
+    
+    // We only count each impact record once (it includes both donor and receiver inherently)
+    for (const impact of impacts) {
+        totalMealsShared += impact.mealsShared || 0;
+        totalFoodKg += impact.foodSavedKg || 0;
+        totalCo2Kg += impact.co2ReducedKg || 0;
+    }
+
+    return sendSuccess(res, {
+        totalTransactions: impacts.length,
+        totalMealsShared: parseFloat(totalMealsShared.toFixed(2)),
+        totalFoodKg: parseFloat(totalFoodKg.toFixed(2)),
+        totalCo2Kg: parseFloat(totalCo2Kg.toFixed(2))
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 /**
  * @desc  Get chart data for the last 6 months

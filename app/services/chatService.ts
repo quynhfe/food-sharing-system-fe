@@ -6,6 +6,16 @@ export const getChats = async () => {
   return response.data.data as Chat[];
 };
 
+/**
+ * GET /api/v1/chats/by-post/:postId
+ * Find the conversation linked to a specific food post for the current user.
+ * Throws if no conversation exists (post not yet accepted).
+ */
+export const getConversationByPost = async (postId: string): Promise<Chat> => {
+  const response = await api.get(`/chats/by-post/${postId}`);
+  return response.data.data as Chat;
+};
+
 /** GET /api/v1/chats/:id/messages – message history for a conversation */
 export const getChatMessages = async (conversationId: string, page = 1, limit = 50) => {
   const response = await api.get(`/chats/${conversationId}/messages`, {
@@ -62,6 +72,7 @@ export interface Message {
 export interface ConversationDetail {
   _id: string;
   transactionId: string;
+  requestId?: string | null;
   donorId: string;
   receiverId: string;
   status: 'open' | 'closed';

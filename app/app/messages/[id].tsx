@@ -15,7 +15,7 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, MoreVertical, Camera, Send, CheckCircle } from 'lucide-react-native';
-import { getChatMessages, completeRequest, Message } from '../../../services/chatService';
+import { getChatMessages, completeRequest, Message } from '../../services/chatService';
 import {
   connectSocket,
   joinRoom,
@@ -23,7 +23,7 @@ import {
   sendMessage as socketSendMessage,
   onReceiveMessage,
   offReceiveMessage,
-} from '../../../services/socketService';
+} from '../../services/socketService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function formatBubbleTime(dateStr: string): string {
@@ -69,13 +69,23 @@ export default function ChatDetailScreen() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [otherUserName, setOtherUserName] = useState('');
+  const [otherUserAvatar, setOtherUserAvatar] = useState<string | null>(null);
   const [postTitle, setPostTitle] = useState('');
   const [postImage, setPostImage] = useState<string | null>(null);
   const [convStatus, setConvStatus] = useState<'open' | 'closed'>('open');
 
-  // Get current user id from storage
+  // Get current user id from storage (saved as JSON under 'userInfo')
   useEffect(() => {
-    AsyncStorage.getItem('userId').then((uid) => setMyUserId(uid));
+    AsyncStorage.getItem('userInfo').then((raw) => {
+      if (raw) {
+        try {
+          const info = JSON.parse(raw);
+          setMyUserId(info._id ?? null);
+        } catch {
+          setMyUserId(null);
+        }
+      }
+    });
   }, []);
 
   // Fetch message history
@@ -89,11 +99,12 @@ export default function ChatDetailScreen() {
 
       // Populate header fields from the populated conversation info
       setOtherUserName(data.conversation.otherUser?.fullName ?? '');
+      setOtherUserAvatar(data.conversation.otherUser?.avatar ?? null);
       setPostTitle(data.conversation.postTitle ?? '');
       setPostImage(data.conversation.postImage ?? null);
 
-      // requestId is the transactionId (refers to a Request document)
-      setRequestId(data.conversation.transactionId as unknown as string);
+      // Backend returns requestId separately from transactionId.
+      setRequestId(data.conversation.requestId ?? null);
 
       if (data.conversation.status === 'closed') setIsCompleted(true);
     } catch (err) {
@@ -110,17 +121,25 @@ export default function ChatDetailScreen() {
   // Socket setup
   useEffect(() => {
     if (!id) return;
-
     let mounted = true;
 
     const setup = async () => {
-      await connectSocket();
-      if (!mounted) return;
-      joinRoom(id);
+      const s = await connectSocket();
+      if (!mounted || !s) return;
+
+      const doJoin = () => {
+        if (mounted) joinRoom(id);
+      };
+
+      // If already connected, join immediately; otherwise wait for 'connect'
+      if (s.connected) {
+        doJoin();
+      } else {
+        s.once('connect', doJoin);
+      }
 
       const handler = (msg: Message) => {
         setMessages((prev) => {
-          // Avoid duplicate if message already in list (sent by this device)
           if (prev.some((m) => m._id === msg._id)) return prev;
           return [...prev, msg];
         });
@@ -131,14 +150,15 @@ export default function ChatDetailScreen() {
       return () => {
         offReceiveMessage(handler);
         leaveRoom(id);
+        s.off('connect', doJoin);
       };
     };
 
-    const cleanup = setup();
+    const cleanupPromise = setup();
 
     return () => {
       mounted = false;
-      cleanup.then((fn) => fn?.());
+      cleanupPromise.then((fn) => fn?.());
     };
   }, [id]);
 
@@ -151,11 +171,20 @@ export default function ChatDetailScreen() {
     }
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = inputText.trim();
     if (!text || !id || isSending) return;
     setInputText('');
-    socketSendMessage(id, text);
+    setIsSending(true);
+    try {
+      // Ensure socket is connected before sending
+      await connectSocket();
+      socketSendMessage(id, text);
+    } catch (err) {
+      console.error('[Chat] Failed to send:', err);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleComplete = async () => {
@@ -250,9 +279,8 @@ export default function ChatDetailScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}
+      style={{ flex: 1, backgroundColor: 'white' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Header */}
       <View
@@ -269,9 +297,9 @@ export default function ChatDetailScreen() {
           </TouchableOpacity>
 
           <View className="flex-1 flex-row items-center gap-3">
-            <View className="w-10 h-10 rounded-full bg-primary/10 overflow-hidden items-center justify-center ring-2">
-              {postImage ? (
-                <Image source={{ uri: postImage }} className="w-10 h-10" resizeMode="cover" />
+            <View className="w-10 h-10 rounded-full bg-primary/10 overflow-hidden items-center justify-center ring-2 border border-primary/20">
+              {otherUserAvatar ? (
+                <Image source={{ uri: otherUserAvatar }} className="w-10 h-10" resizeMode="cover" />
               ) : (
                 <Text className="text-primary font-bold">{otherUserName[0] ?? '?'}</Text>
               )}

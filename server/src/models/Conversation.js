@@ -24,7 +24,6 @@ const conversationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-conversationSchema.index({ transactionId: 1 });
 conversationSchema.index({ donorId: 1 });
 conversationSchema.index({ receiverId: 1 });
 

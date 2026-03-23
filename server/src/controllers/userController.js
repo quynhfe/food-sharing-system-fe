@@ -1,45 +1,45 @@
-import * as userService from '../services/userService.js';
-import { registerSchema } from '../validators/userValidator.js';
+import User from '../models/User.js';
+import FoodPost from '../models/FoodPost.js';
+import { sendSuccess, sendError } from '../helpers/responseHelper.js';
 
 /**
- * @desc Get all users
+ * @desc Get all users (Safe version)
  * @route GET /api/v1/users
- * @access Public
+ * @access Private/Admin
  */
 export const getUsers = async (req, res, next) => {
   try {
-    const users = await userService.getAllUsers();
-    res.status(200).json({
-      success: true,
-      count: users.length,
-      data: users,
-    });
+    const users = await User.find().select('-passwordHash');
+    return sendSuccess(res, users);
   } catch (error) {
     next(error);
   }
 };
 
 /**
- * @desc Register a user
- * @route POST /api/v1/users/register
+ * @desc Get a single user's public profile
+ * @route GET /api/v1/users/:id
  * @access Public
  */
-export const registerUser = async (req, res, next) => {
+export const getUserProfile = async (req, res, next) => {
   try {
-    const { error } = registerSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.details[0].message,
-      });
+    const user = await User.findById(req.params.id)
+      .select('fullName email avatar trustScore exp role createdAt');
+
+    if (!user) {
+      return sendError(res, 'Không tìm thấy người dùng', 404);
     }
 
-    const { name, email, password, role } = req.body;
-    const user = await userService.createUser({ name, email, password, role });
+    // Also fetch their active posts
+    const activePosts = await FoodPost.find({ 
+      donorId: req.params.id, 
+      status: 'active',
+      expirationDate: { $gt: new Date() }
+    }).sort({ createdAt: -1 });
 
-    res.status(201).json({
-      success: true,
-      data: user,
+    return sendSuccess(res, {
+      user,
+      activePosts
     });
   } catch (error) {
     next(error);

@@ -20,7 +20,6 @@ const impactRecordSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-impactRecordSchema.index({ transactionId: 1 });
 impactRecordSchema.index({ donorId: 1 });
 impactRecordSchema.index({ receiverId: 1 });
 

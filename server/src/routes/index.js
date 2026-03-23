@@ -5,6 +5,7 @@ import chatRoutes from './chatRoutes.js';
 import requestRoutes from './requestRoutes.js';
 import postRoutes from './postRoutes.js';
 import impactRoutes from './impactRoutes.js';
+import adminRoutes from './adminRoutes.js';
 
 const router = express.Router();
 
@@ -14,5 +15,6 @@ router.use('/chats', chatRoutes);
 router.use('/requests', requestRoutes);
 router.use('/posts', postRoutes);
 router.use('/impact', impactRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;

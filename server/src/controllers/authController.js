@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../validators/authValidator.js';
 import { sendSuccess, sendError } from '../helpers/responseHelper.js';
+import { sendPasswordResetEmail } from '../utils/emailService.js';
 import crypto from 'crypto';
 
 /**
@@ -83,7 +84,7 @@ export const loginUser = async (req, res, next) => {
 };
 
 /**
- * @desc Forgot password
+ * @desc Forgot password – generate 6-digit OTP and send email
  * @route POST /api/v1/auth/forgot-password
  * @access Public
  */
@@ -100,13 +101,13 @@ export const forgotPassword = async (req, res, next) => {
       return sendError(res, 'Không tìm thấy người dùng với email này', 404);
     }
 
-    // Generate reset token
-    const resetToken = crypto.randomBytes(20).toString('hex');
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Hash token and set to field
+    // Hash OTP and save to DB
     user.resetPasswordToken = crypto
       .createHash('sha256')
-      .update(resetToken)
+      .update(otp)
       .digest('hex');
 
     // Set expire (10 minutes)
@@ -114,10 +115,57 @@ export const forgotPassword = async (req, res, next) => {
 
     await user.save();
 
-    // In production, send email here. For now, return token in response (for testing/mobile flow)
+    // Send email with OTP
+    try {
+      await sendPasswordResetEmail(user.email, otp, user.fullName);
+      return sendSuccess(res, {
+        message: `Mã OTP đã được gửi đến email ${user.email}`,
+      });
+    } catch (emailError) {
+      // If email fails, rollback token
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+      console.error('Email send error:', emailError);
+      return sendError(res, 'Không thể gửi email. Vui lòng thử lại sau.', 500);
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc Verify OTP (without resetting password yet)
+ * @route POST /api/v1/auth/verify-otp
+ * @access Public
+ */
+export const verifyOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return sendError(res, 'Email và mã OTP là bắt buộc', 400);
+    }
+
+    // Hash the incoming OTP
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+
+    const user = await User.findOne({
+      email,
+      resetPasswordToken: hashedOtp,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return sendError(res, 'Mã OTP không hợp lệ hoặc đã hết hạn', 400);
+    }
+
+    // OTP is valid — return a short-lived "verified" token so FE can proceed to reset
+    // We keep resetPasswordToken intact until password is actually reset
     return sendSuccess(res, {
-      message: 'Email khôi phục mật khẩu đã được xử lý (Mock)',
-      resetToken: resetToken // Only returning this for dev ease
+      message: 'Mã OTP hợp lệ',
+      resetToken: req.body.otp, // raw OTP used as reset token for next step
+      email,
     });
   } catch (error) {
     next(error);
@@ -125,8 +173,8 @@ export const forgotPassword = async (req, res, next) => {
 };
 
 /**
- * @desc Reset password
- * @route PUT /api/v1/auth/reset-password/:resettoken
+ * @desc Reset password using OTP
+ * @route PUT /api/v1/auth/reset-password
  * @access Public
  */
 export const resetPassword = async (req, res, next) => {
@@ -136,31 +184,48 @@ export const resetPassword = async (req, res, next) => {
       return sendError(res, error.details[0].message, 400);
     }
 
-    // Get hashed token
-    const resetPasswordToken = crypto
-      .createHash('sha256')
-      .update(req.params.resettoken)
-      .digest('hex');
+    const { email, otp, password } = req.body;
+
+    if (!email || !otp) {
+      return sendError(res, 'Email và OTP là bắt buộc', 400);
+    }
+
+    // Hash OTP to compare
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
 
     const user = await User.findOne({
-      resetPasswordToken,
+      email,
+      resetPasswordToken: hashedOtp,
       resetPasswordExpires: { $gt: Date.now() },
     });
 
     if (!user) {
-      return sendError(res, 'Token không hợp lệ hoặc đã hết hạn', 400);
+      return sendError(res, 'Mã OTP không hợp lệ hoặc đã hết hạn', 400);
     }
 
     // Set new password
-    user.passwordHash = req.body.password;
+    user.passwordHash = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
 
     await user.save();
 
     return sendSuccess(res, {
-      message: 'Mật khẩu đã được thay đổi thành công'
+      message: 'Mật khẩu đã được thay đổi thành công. Vui lòng đăng nhập lại.'
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc Logout user (client-side token removal)
+ * @route POST /api/v1/auth/logout
+ * @access Public
+ */
+export const logoutUser = async (req, res, next) => {
+  try {
+    return sendSuccess(res, { message: 'Đăng xuất thành công' });
   } catch (error) {
     next(error);
   }

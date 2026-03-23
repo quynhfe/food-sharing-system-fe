@@ -23,6 +23,7 @@ export interface FeedQueryParams {
   limit?: number;
   search?: string;
   filter?: FeedFilterType;
+  category?: 'cooked' | 'raw' | 'packaged' | 'other' | string;
   latitude?: number;
   longitude?: number;
   maxDistance?: number;

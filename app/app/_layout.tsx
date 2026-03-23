@@ -36,8 +36,12 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="food/[id]" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="(tabs)/messages/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="food/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="messages/[id]" options={{ presentation: 'card', animation: 'slide_from_right' }} />
+        <Stack.Screen name="request/[id]" options={{ presentation: 'card', animation: 'slide_from_right' }} />
+        <Stack.Screen name="request/me" options={{ presentation: 'card', animation: 'slide_from_right' }} />
+        <Stack.Screen name="profile/[id]" options={{ presentation: 'card', animation: 'slide_from_right' }} />
+        <Stack.Screen name="food/favorites" options={{ presentation: 'card', animation: 'slide_from_right' }} />
       </Stack>
     </QueryClientProvider>
   );

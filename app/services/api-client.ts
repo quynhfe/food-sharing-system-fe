@@ -1,7 +1,7 @@
 import { storage } from '@/utils/storage';
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:5000/api/v1';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.17:5000/api/v1';
 
 // Storage keys
 const TOKEN_KEY = 'userToken';
@@ -149,6 +149,7 @@ export const setAuthTokens = async (accessToken: string, refreshToken?: string) 
 export const clearTokens = async () => {
   await storage.removeItem(TOKEN_KEY);
   await storage.removeItem(REFRESH_TOKEN_KEY);
+  await storage.removeItem('userInfo');
 };
 
 export const getAccessToken = async () => {

@@ -1,6 +1,6 @@
 // app/(auth)/login.tsx
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Image, ScrollView, Platform, KeyboardAvoidingView, Alert } from 'react-native';
+import { View, TouchableOpacity, Image, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import { Text } from '../../components/ui/text';
 import { Mail, Lock, Eye, Leaf } from 'lucide-react-native';
 import { router } from 'expo-router';
@@ -8,6 +8,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { authService } from '../../services/authService';
+import { Toast } from '../../components/ui/Toast';
+import { useToast } from '../../hooks/useToast';
 
 export default function Login() {
   const insets = useSafeAreaInsets();
@@ -15,14 +17,34 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
 
   const handleLogin = async () => {
-    // Tạm thời bỏ qua validate và API để vào thẳng Home Test
-    router.replace('/(tabs)');
+    if (!email || !password) {
+      showToast('Vui lòng nhập đầy đủ email và mật khẩu.', 'warning');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await authService.login({ email, password });
+      showToast('Đăng nhập thành công!', 'success');
+      setTimeout(() => router.replace('/(tabs)'), 1200);
+    } catch (error: any) {
+      showToast(error.toString(), 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white">
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }}>
         <View className="flex-col items-center pb-8">
           <View className="flex-row items-center gap-2">

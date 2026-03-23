@@ -1,4 +1,4 @@
-import apiClient, { setAuthTokens, clearTokens } from './api-client';
+import apiClient from './api-client';
 import { storage } from '@/utils/storage';
 
 export const authService = {
@@ -51,9 +51,18 @@ export const authService = {
     }
   },
 
-  resetPassword: async (token: string, password: string) => {
+  verifyOtp: async (email: string, otp: string) => {
     try {
-      const response = await apiClient.put(`/auth/reset-password/${token}`, { password });
+      const response = await apiClient.post('/auth/verify-otp', { email, otp });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data?.message || 'Mã OTP không hợp lệ';
+    }
+  },
+
+  resetPassword: async (email: string, otp: string, password: string) => {
+    try {
+      const response = await apiClient.put('/auth/reset-password', { email, otp, password });
       return response.data;
     } catch (error: any) {
       throw error.response?.data?.message || 'Lỗi kết nối mạng';

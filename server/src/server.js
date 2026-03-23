@@ -113,8 +113,9 @@ export { io };
 
 // Connect to Database and start server
 connectDB().then(() => {
-  httpServer.listen(PORT, () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+    console.log(`Accessible on LAN at http://0.0.0.0:${PORT}`);
   });
 });
 

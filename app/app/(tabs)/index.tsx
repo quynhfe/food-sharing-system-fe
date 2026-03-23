@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, ActivityIndicator, FlatList, RefreshControl } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { Bell, Search, MapPin, ChevronRight } from 'lucide-react-native';
+import { Bell, Search, MapPin, ChevronRight, MessageCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -66,10 +66,21 @@ export default function Home() {
               <ChevronRight size={16} color="#94A3B8" />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity className="w-11 h-11 rounded-full bg-slate-50 items-center justify-center border border-slate-100 relative" activeOpacity={0.7}>
-            <Bell size={20} color="#334155" />
-            <View className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full border border-white"></View>
-          </TouchableOpacity>
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity 
+              className="w-11 h-11 rounded-full bg-slate-50 items-center justify-center border border-slate-100 relative" 
+              activeOpacity={0.7}
+              onPress={() => router.push('/(tabs)/messages/index')}
+            >
+              <MessageCircle size={20} color="#334155" />
+              <View className="absolute top-3 right-3 w-2 h-2 bg-[#2E7D32] rounded-full border border-white"></View>
+            </TouchableOpacity>
+
+            <TouchableOpacity className="w-11 h-11 rounded-full bg-slate-50 items-center justify-center border border-slate-100 relative" activeOpacity={0.7}>
+              <Bell size={20} color="#334155" />
+              <View className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full border border-white"></View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Search Input */}
@@ -166,7 +177,7 @@ export default function Home() {
         onEndReachedThreshold={0.5}
 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: Math.max(140, insets.bottom + 110) }}
       />
     </View>
   );
