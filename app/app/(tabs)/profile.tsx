@@ -164,16 +164,18 @@ export default function Profile() {
 
         <View className="px-6 mt-8 gap-4">
           <Text className="text-xl font-extrabold text-[#1A2E1A] mb-2">Tài khoản</Text>
-
-          <Animated.View entering={FadeInRight.duration(500).delay(100)}>
-            <TouchableOpacity 
-              onPress={() => router.push('/food/me')}
-              activeOpacity={0.8} 
-              className="flex-row items-center justify-between bg-white p-4 rounded-[24px] shadow-sm border border-slate-100"
-            >
-              <View className="flex-row items-center gap-4">
-                <View className="w-12 h-12 bg-blue-50 rounded-full items-center justify-center">
-                  <Package size={22} color="#3B82F6" />
+          {[
+            { icon: Package, label: 'Bài đăng của tôi', color: '#3B82F6', bg: 'bg-blue-50', onPress: () => {} },
+            { icon: Heart, label: 'Danh sách quan tâm', color: '#E53935', bg: 'bg-red-50', onPress: () => router.push('/wishlist' as any) },
+            { icon: Award, label: 'Huy hiệu & Thành tích', color: '#F59E0B', bg: 'bg-amber-50', onPress: () => {} },
+          ].map((item, index) => (
+            <Animated.View key={index} entering={FadeInRight.duration(500).delay(index * 100)}>
+              <TouchableOpacity onPress={item.onPress} activeOpacity={0.8} className="flex-row items-center justify-between bg-white p-4 rounded-[24px] shadow-sm border border-slate-100">
+                <View className="flex-row items-center gap-4">
+                  <View className={`w-12 h-12 ${item.bg} rounded-full items-center justify-center`}>
+                    <item.icon size={22} color={item.color} />
+                  </View>
+                  <Text className="font-bold text-base text-[#1A2E1A]">{item.label}</Text>
                 </View>
                 <View>
                   <Text className="font-bold text-base text-[#1A2E1A]">Bài đăng của tôi</Text>

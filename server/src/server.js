@@ -7,6 +7,7 @@ import Message from './models/Message.js';
 import Conversation from './models/Conversation.js';
 import jwt from 'jsonwebtoken';
 import User from './models/User.js';
+import { startExpirationJob } from './jobs/expirationJob.js';
 
 dotenv.config();
 
@@ -113,9 +114,11 @@ export { io };
 
 // Connect to Database and start server
 connectDB().then(() => {
+  // Start automated jobs
+  startExpirationJob();
+
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
     console.log(`Accessible on LAN at http://0.0.0.0:${PORT}`);
   });
 });
-

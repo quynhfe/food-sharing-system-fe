@@ -51,7 +51,7 @@ export default function Login() {
             <View className="w-10 h-10 bg-[#2E7D32] rounded-full flex items-center justify-center shadow-sm">
               <Leaf size={22} color="#fff" />
             </View>
-            <Text className="text-slate-800 text-2xl font-bold tracking-tight">GreenShare</Text>
+            <Text className="text-slate-800 text-2xl font-bold tracking-tight">FoodShare</Text>
           </View>
         </View>
 
@@ -61,21 +61,21 @@ export default function Login() {
         </View>
 
         <View className="px-6 flex-col gap-5">
-          <Input 
-            label="Email" 
-            placeholder="Nhập email của bạn" 
-            keyboardType="email-address" 
-            autoCapitalize="none" 
-            startIcon={<Mail size={20} color="#94a3b8" />} 
+          <Input
+            label="Email"
+            placeholder="Nhập email của bạn"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            startIcon={<Mail size={20} color="#94a3b8" />}
             value={email}
             onChangeText={setEmail}
           />
-          <Input 
-            label="Mật khẩu" 
-            placeholder="Nhập mật khẩu" 
-            secureTextEntry 
-            startIcon={<Lock size={20} color="#94a3b8" />} 
-            endIcon={<Eye size={20} color="#94a3b8" />} 
+          <Input
+            label="Mật khẩu"
+            placeholder="Nhập mật khẩu"
+            secureTextEntry
+            startIcon={<Lock size={20} color="#94a3b8" />}
+            endIcon={<Eye size={20} color="#94a3b8" />}
             value={password}
             onChangeText={setPassword}
           />
@@ -86,8 +86,8 @@ export default function Login() {
             </TouchableOpacity>
           </View>
 
-          <Button 
-            onPress={handleLogin} 
+          <Button
+            onPress={handleLogin}
             className={`w-full mt-4 shadow-md shadow-[#2E7D32]/20 ${isLoading ? 'opacity-70' : ''}`}
             disabled={isLoading}
           >

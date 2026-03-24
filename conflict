@@ -1,0 +1,68 @@
+Auto-merging app/.env
+CONFLICT (content): Merge conflict in app/.env
+
+
+Auto-merging app/app/(tabs)/_layout.tsx
+CONFLICT (content): Merge conflict in app/app/(tabs)/_layout.tsx -
+
+Auto-merging app/app/(tabs)/create.tsx
+CONFLICT (content): Merge conflict in app/app/(tabs)/create.tsx
+
+Auto-merging app/app/(tabs)/explore.tsx
+CONFLICT (content): Merge conflict in app/app/(tabs)/explore.tsx
+
+Auto-merging app/app/(tabs)/index.tsx
+CONFLICT (content): Merge conflict in app/app/(tabs)/index.tsx
+
+Auto-merging app/app/(tabs)/profile.tsx
+CONFLICT (content): Merge conflict in app/app/(tabs)/profile.tsx
+
+Auto-merging app/app/_layout.tsx
+CONFLICT (content): Merge conflict in app/app/_layout.tsx
+
+Auto-merging app/app/food/[id].tsx
+CONFLICT (content): Merge conflict in app/app/food/[id].tsx
+
+Auto-merging app/components/ui/Toast.tsx
+CONFLICT (add/add): Merge conflict in app/components/ui/Toast.tsx
+
+Auto-merging app/features/feed/components/FoodCard.tsx
+CONFLICT (content): Merge conflict in app/features/feed/components/FoodCard.tsx
+
+Auto-merging app/package-lock.json
+CONFLICT (content): Merge conflict in app/package-lock.json
+
+Auto-merging app/package.json
+CONFLICT (content): Merge conflict in app/package.json
+
+Auto-merging app/services/api-client.ts
+
+Auto-merging app/services/api.ts
+CONFLICT (content): Merge conflict in app/services/api.ts
+
+Auto-merging server/package-lock.json
+CONFLICT (content): Merge conflict in server/package-lock.json
+
+Auto-merging server/package.json
+CONFLICT (content): Merge conflict in server/package.json
+
+Auto-merging server/src/controllers/postController.js
+CONFLICT (content): Merge conflict in server/src/controllers/postController.js
+
+Auto-merging server/src/routes/index.js
+CONFLICT (content): Merge conflict in server/src/routes/index.js
+
+Auto-merging server/src/routes/postRoutes.js
+CONFLICT (content): Merge conflict in server/src/routes/postRoutes.js
+
+Auto-merging server/src/seed.js
+CONFLICT (add/add): Merge conflict in server/src/seed.js
+
+Auto-merging server/src/server.js
+CONFLICT (content): Merge conflict in server/src/server.js
+
+Auto-merging server/src/validators/postValidator.js
+CONFLICT (content): Merge conflict in server/src/validators/postValidator.js
+
+CONFLICT (modify/delete): web/styles/globals.css deleted in HEAD and modified in origin/feat/wishlist-search-map-post.  Version origin/feat/wishlist-search-map-post of web/styles/globals.css left in tree.
+Automatic merge failed; fix conflicts and then commit the result.

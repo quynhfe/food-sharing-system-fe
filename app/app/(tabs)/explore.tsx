@@ -1,278 +1,307 @@
-import React, { useState, useCallback } from "react";
+// app/(tabs)/explore.tsx
+import React, { useEffect, useCallback } from 'react';
 import {
   View,
-  TouchableOpacity,
-  Image,
   FlatList,
+  TouchableOpacity,
+  TextInput,
   ActivityIndicator,
-  RefreshControl,
-  TextInput
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+  useWindowDimensions,
+  Keyboard,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Search,
-  MapPin,
-  Filter,
-  Navigation,
-  MessageCircle,
-  Clock
-} from "lucide-react-native";
-import Animated, { FadeInUp, FadeInDown } from "react-native-reanimated";
-import { router } from "expo-router";
-import { Text } from "@/components/ui/text";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useInfiniteFeedQuery } from "@/features/feed/hooks/useFeedQuery";
-import { formatDistance, formatTimeLeft } from "@/utils/helpers";
+  X,
+  Clock,
+  Trash2,
+  ChevronRight,
+  Leaf,
+} from 'lucide-react-native';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import { router } from 'expo-router';
+import { Text } from '@/components/ui/text';
+
+import { useSearchStore } from '@/features/search/stores/search.store';
+import { useDebounce } from '@/features/search/hooks/useDebounce';
+import { FoodCard } from '@/features/feed/components/FoodCard';
+import { FoodCardSkeleton } from '@/features/feed/components/FoodCardSkeleton';
+import { EmptyState } from '@/features/feed/components/EmptyState';
+import type { FoodPost } from '@/features/feed/types';
 
 const CATEGORIES = [
-  { label: "Tất cả", value: "" },
-  { label: "Chế biến sẵn", value: "cooked" },
-  { label: "Nguyên liệu tươi", value: "raw" },
-  { label: "Đóng gói", value: "packaged" },
-  { label: "Khác", value: "other" }
-];
+  { label: 'Tất cả', value: null },
+  { label: '🍳 Đã nấu', value: 'cooked' },
+  { label: '🥬 Tươi sống', value: 'raw' },
+  { label: '📦 Đóng gói', value: 'packaged' },
+  { label: '🍱 Khác', value: 'other' },
+] as const;
 
 export default function Explore() {
   const insets = useSafeAreaInsets();
-  const [activeCategory, setActiveCategory] = useState("");
-  const [searchText, setSearchText] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+  const { width } = useWindowDimensions();
+  const PADDING = 16;
+  const GAP = 12;
+  const itemWidth = (width - PADDING * 2 - GAP) / 2;
 
   const {
-    data,
-    isLoading,
-    isRefetching,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    refetch
-  } = useInfiniteFeedQuery({
-    category: activeCategory as any,
-    search: searchText,
-    limit: 10
-  });
+    searchQuery,
+    setSearchQuery,
+    clearSearchQuery,
+    selectedCategory,
+    setCategory,
+    searchResults,
+    loadingResults,
+    resultsError,
+    isLoadingMore,
+    searchHistory,
+    addHistoryItem,
+    clearHistory,
+    searchPosts,
+    loadMore,
+    clearResults,
+  } = useSearchStore();
 
-  const posts = data?.pages.flatMap(page => page?.posts || []) || [];
+  const debouncedQuery = useDebounce(searchQuery, 400);
 
-  const handleSearch = () => {
-    setSearchText(searchInput);
-  };
+  // Trigger search when debounced query or category changes
+  useEffect(() => {
+    if (debouncedQuery.trim() || selectedCategory) {
+      if (debouncedQuery.trim()) {
+        addHistoryItem(debouncedQuery.trim());
+      }
+      searchPosts(true);
+    } else {
+      clearResults();
+    }
+  }, [debouncedQuery, selectedCategory]);
 
-  const onRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
-  const renderHeader = () => (
-    <View
-      className="bg-white z-20 px-6 pb-4 shadow-sm shadow-slate-200/40 rounded-b-[32px]"
-      style={{ paddingTop: Math.max(insets.top, 20) }}>
-      <View className="flex-row items-center justify-between mb-6">
-        <View>
-          <Text className="text-2xl font-bold text-[#1A2E1A]">
-            Khám phá 🌍
-          </Text>
-          <Text className="text-slate-500 font-medium mt-1">
-            Tìm kiếm thực phẩm quanh bạn
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-3">
-          <TouchableOpacity
-            onPress={() => router.push('/(tabs)/messages/index')}
-            className="w-11 h-11 bg-slate-50 items-center justify-center rounded-full border border-slate-100"
-            activeOpacity={0.8}>
-            <MessageCircle
-              size={22}
-              color="#334155"
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="w-11 h-11 bg-[#F1F5F1] rounded-full items-center justify-center"
-            activeOpacity={0.8}>
-            <Filter
-              size={22}
-              color="#2E7D32"
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View className="relative flex-row items-center">
-        <View className="absolute left-4 z-10">
-          <Search color="#94A3B8" size={20} />
-        </View>
-        <TextInput
-          value={searchInput}
-          onChangeText={setSearchInput}
-          onSubmitEditing={handleSearch}
-          placeholder="Bạn đang tìm món gì?"
-          placeholderTextColor="#94A3B8"
-          returnKeyType="search"
-          className="flex-1 h-14 pl-12 pr-4 bg-[#F8FAF8] rounded-2xl text-sm font-medium text-slate-800 border border-slate-100"
-        />
-        <TouchableOpacity className="absolute right-4">
-           <MapPin color="#2E7D32" size={20} />
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={CATEGORIES}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="mt-5"
-        keyExtractor={(item) => item.value}
-        contentContainerStyle={{ gap: 10 }}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => setActiveCategory(item.value)}
-            className={`px-5 h-10 flex-row items-center justify-center rounded-full border ${
-              activeCategory === item.value
-                ? "bg-[#2E7D32] border-[#2E7D32]"
-                : "bg-white border-slate-200"
-            }`}
-            activeOpacity={0.8}>
-            <Text
-              numberOfLines={1}
-              className={`font-bold text-sm leading-none ${
-                activeCategory === item.value ? "text-white" : "text-slate-600"
-              }`}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
-    </View>
+  const handleHistoryPress = useCallback(
+    (term: string) => {
+      setSearchQuery(term);
+      Keyboard.dismiss();
+    },
+    [setSearchQuery]
   );
 
-  const renderItem = ({ item, index }: { item: any, index: number }) => {
-    const donor = item.donorId;
-    const distance = item.calculatedDistance 
-      ? formatDistance(item.calculatedDistance / 1000) 
-      : formatDistance((Math.random() * 5) + 0.1);
+  const handleCategoryPress = useCallback(
+    (value: string | null) => {
+      setCategory(value);
+    },
+    [setCategory]
+  );
 
+  const showHistory =
+    !loadingResults &&
+    searchResults.length === 0 &&
+    !searchQuery.trim() &&
+    !selectedCategory;
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  const renderItem = useCallback(
+    ({ item }: { item: FoodPost }) => (
+      <View style={{ width: itemWidth }}>
+        <FoodCard
+          post={item}
+          onPress={() => router.push(`/food/${item._id}` as any)}
+        />
+      </View>
+    ),
+    [itemWidth]
+  );
+
+  const renderFooter = () => {
+    if (isLoadingMore) {
+      return (
+        <View className="py-6 items-center">
+          <ActivityIndicator size="small" color="#2E7D32" />
+        </View>
+      );
+    }
+    return null;
+  };
+
+  const renderEmpty = () => {
+    if (loadingResults) return null;
+    if (!searchQuery.trim() && !selectedCategory) return null;
     return (
-      <Animated.View
-        entering={FadeInDown.duration(500).delay(index * 50)}
-        className="flex-1 px-2 mb-4">
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => router.push(`/food/${item._id}`)}>
-          <Card className="border-0 bg-white rounded-[24px] shadow-sm shadow-slate-200/50 overflow-hidden">
-            <View className="h-32 w-full relative bg-slate-100">
-              <Image
-                source={{
-                  uri: item.images?.[0] || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400'
-                }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-              <View className="absolute bottom-2 left-2">
-                <Badge
-                  label={distance}
-                  variant="default"
-                  textClassName="text-[10px]"
-                  className="px-2 py-0.5"
-                />
-              </View>
-            </View>
-            <View className="p-3">
-              <Text
-                className="font-bold text-[#1A2E1A] text-sm mb-1"
-                numberOfLines={1}>
-                {item.title}
-              </Text>
-              <View className="flex-row items-center justify-between mt-1">
-                <View className="flex-row items-center gap-1">
-                  <Image
-                    source={{
-                      uri: donor?.avatar || `https://i.pravatar.cc/150?u=${donor?._id}`
-                    }}
-                    className="w-5 h-5 rounded-full bg-slate-200"
-                  />
-                  <Text className="text-[10px] text-slate-500 font-bold max-w-[50px]" numberOfLines={1}>
-                    {donor?.fullName?.split(' ').pop()}
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-1">
-                  <Clock size={10} color="#94A3B8" />
-                  <Text className="text-[10px] text-slate-400 font-bold">
-                    {formatTimeLeft(item.expirationDate)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </Card>
-        </TouchableOpacity>
-      </Animated.View>
+      <EmptyState
+        title="Không tìm thấy kết quả"
+        description="Thử thay đổi từ khóa hoặc bộ lọc nhé!"
+      />
     );
   };
 
+  const renderSkeletons = () => (
+    <View className="flex-row flex-wrap px-4 gap-3 mt-2">
+      {[1, 2, 3, 4].map((i) => (
+        <View key={i} style={{ width: itemWidth }}>
+          <FoodCardSkeleton />
+        </View>
+      ))}
+    </View>
+  );
+
   return (
     <View className="flex-1 bg-[#F8FAF8]">
-      {renderHeader()}
-
-      {isLoading && !isRefetching ? (
-        <View className="flex-1 items-center justify-center pt-20">
-          <ActivityIndicator size="large" color="#2E7D32" />
+      {/* ── Header ── */}
+      <View
+        className="bg-white z-20 px-6 pb-4 shadow-sm shadow-slate-200/40 rounded-b-[32px]"
+        style={{ paddingTop: Math.max(insets.top, 20) }}
+      >
+        {/* Title */}
+        <View className="flex-row items-center justify-between mb-5">
+          <View>
+            <Text className="text-2xl font-bold text-[#1A2E1A]">
+              Tìm kiếm 🔍
+            </Text>
+            <Text className="text-slate-500 font-medium mt-1">
+              Tìm thực phẩm bạn cần
+            </Text>
+          </View>
+          <View className="w-10 h-10 bg-[#E8F5E9] rounded-full items-center justify-center">
+            <Leaf size={20} color="#2E7D32" />
+          </View>
         </View>
-      ) : (
+
+        {/* Search Input */}
+        <View className="flex-row items-center bg-[#F8FAF8] rounded-2xl h-14 px-4 gap-3">
+          <Search size={20} color="#94A3B8" />
+          <TextInput
+            className="flex-1 text-base text-slate-800 font-medium"
+            placeholder="Tìm món ăn, rau củ, bánh..."
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearchQuery} activeOpacity={0.7}>
+              <View className="w-7 h-7 rounded-full bg-slate-200 items-center justify-center">
+                <X size={14} color="#64748B" />
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Category Chips */}
         <FlatList
-          data={posts}
-          keyExtractor={(item) => item._id}
-          renderItem={renderItem}
-          numColumns={2}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 140 }}
-          ListHeaderComponent={
-            <View className="px-2 mb-4">
-              <Animated.View
-                entering={FadeInUp.duration(600)}
-                className="w-full h-40 bg-slate-200 rounded-[32px] overflow-hidden relative shadow-sm border border-slate-100">
-                <Image
-                  source={{
-                    uri: "https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=800"
-                  }}
-                  className="w-full h-full opacity-60"
-                />
-                <View className="absolute inset-0 bg-[#2E7D32]/10" />
-                <View className="absolute top-1/2 left-1/2 -mt-6 -ml-6 w-12 h-12 bg-white rounded-full items-center justify-center shadow-lg shadow-black/10">
-                  <Navigation
-                    size={24}
-                    color="#2E7D32"
-                    fill="#2E7D32"
-                  />
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={CATEGORIES}
+          keyExtractor={(item) => item.label}
+          className="mt-4"
+          contentContainerStyle={{ gap: 10 }}
+          renderItem={({ item }) => {
+            const isActive = item.value === selectedCategory;
+            return (
+              <TouchableOpacity
+                onPress={() => handleCategoryPress(item.value)}
+                activeOpacity={0.8}
+                className={`px-5 py-2 flex-row items-center justify-center rounded-full border ${isActive
+                  ? 'bg-[#2E7D32] border-[#2E7D32]'
+                  : 'bg-white border-slate-200'
+                  }`}
+              >
+                <Text
+                  numberOfLines={1}
+                  className={`font-bold text-sm  ${isActive ? 'text-white' : 'text-slate-600'
+                    }`}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+
+      {/* ── Body ── */}
+      {loadingResults && searchResults.length === 0 ? (
+        renderSkeletons()
+      ) : showHistory ? (
+        /* Search History */
+        <Animated.View entering={FadeIn.duration(300)} className="flex-1 p-6">
+          {searchHistory.length > 0 && (
+            <>
+              <View className="flex-row items-center justify-between mb-4">
+                <View className="flex-row items-center gap-2">
+                  <Clock size={16} color="#94A3B8" />
+                  <Text className="text-base font-bold text-slate-700">
+                    Tìm kiếm gần đây
+                  </Text>
                 </View>
-                <TouchableOpacity className="absolute bottom-4 right-4 bg-white/90 px-4 py-2 rounded-full shadow-sm">
-                  <Text className="font-bold text-[#1A2E1A] text-xs">Phóng to bản đồ</Text>
+                <TouchableOpacity
+                  onPress={clearHistory}
+                  activeOpacity={0.7}
+                  className="flex-row items-center gap-1"
+                >
+                  <Trash2 size={14} color="#EF4444" />
+                  <Text className="text-sm font-semibold text-red-500">
+                    Xoá
+                  </Text>
                 </TouchableOpacity>
-              </Animated.View>
-              <Text className="text-xl font-extrabold text-[#1A2E1A] mt-8 mb-2">
-                {searchText ? `Kết quả cho "${searchText}"` : "Gợi ý cho bạn"}
+              </View>
+
+              {searchHistory.map((term, index) => (
+                <Animated.View
+                  key={term}
+                  entering={FadeInDown.duration(300).delay(index * 50)}
+                >
+                  <TouchableOpacity
+                    onPress={() => handleHistoryPress(term)}
+                    activeOpacity={0.7}
+                    className="flex-row items-center justify-between py-3.5 border-b border-slate-100"
+                  >
+                    <View className="flex-row items-center gap-3">
+                      <View className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center">
+                        <Search size={14} color="#94A3B8" />
+                      </View>
+                      <Text className="text-base font-medium text-slate-700">
+                        {term}
+                      </Text>
+                    </View>
+                    <ChevronRight size={16} color="#CBD5E1" />
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </>
+          )}
+
+          {searchHistory.length === 0 && (
+            <View className="items-center justify-center mt-20">
+              <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-4">
+                <Search size={28} color="#2E7D32" />
+              </View>
+              <Text className="text-lg font-bold text-slate-700 mb-1">
+                Bắt đầu tìm kiếm
+              </Text>
+              <Text className="text-sm text-slate-500 text-center px-8">
+                Nhập tên món ăn hoặc chọn danh mục để khám phá
               </Text>
             </View>
-          }
-          ListEmptyComponent={
-            <View className="items-center justify-center pt-20">
-              <Text className="text-4xl mb-4">🔍</Text>
-              <Text className="text-base font-bold text-slate-400">Không tìm thấy thực phẩm nào</Text>
-            </View>
-          }
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#2E7D32" />
-          }
-          onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) {
-              fetchNextPage();
-            }
+          )}
+        </Animated.View>
+      ) : (
+        /* Search Results Grid */
+        <FlatList<FoodPost>
+          data={searchResults}
+          keyExtractor={(item) => item._id}
+          numColumns={2}
+          columnWrapperStyle={{ paddingHorizontal: PADDING, gap: GAP }}
+          renderItem={renderItem}
+          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderFooter}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingTop: 16,
+            paddingBottom: insets.bottom + 100,
           }}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View className="py-4">
-                <ActivityIndicator size="small" color="#2E7D32" />
-              </View>
-            ) : null
-          }
         />
       )}
     </View>
