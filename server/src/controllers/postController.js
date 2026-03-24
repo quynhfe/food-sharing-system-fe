@@ -1,4 +1,5 @@
 import FoodPost from '../models/FoodPost.js';
+import Request from '../models/Request.js';
 
 import { getPostsQuerySchema, createPostSchema, updatePostSchema, getPostsForMapQuerySchema } from '../validators/postValidator.js';
 import { sendSuccess, sendError } from '../helpers/responseHelper.js';
@@ -200,19 +201,50 @@ export const createPost = async (req, res, next) => {
 export const getPostDetails = async (req, res, next) => {
   try {
     const post = await FoodPost.findById(req.params.id)
-      .populate('donorId', 'fullName avatar email')
+      .populate('donorId', 'fullName avatar email phone trustScore')
       .lean();
 
     if (!post) {
       return sendError(res, 'Post not found', 404);
     }
 
-    // Mock trust score and previous shares since it's not in DB yet
-    post.donor = {
-      ...post.donorId,
-      trustScore: 94,
-      sharesCount: 23,
-    };
+    const donorDoc = post.donorId;
+    const donorObjectId =
+      donorDoc && typeof donorDoc === 'object' && donorDoc._id != null
+        ? donorDoc._id
+        : donorDoc;
+
+    let sharesCount = 0;
+    if (donorObjectId) {
+      sharesCount = await FoodPost.countDocuments({
+        donorId: donorObjectId,
+        status: { $nin: ['deleted', 'hidden'] },
+      });
+    }
+
+    const isPopulatedDonor =
+      donorDoc && typeof donorDoc === 'object' && typeof donorDoc.fullName === 'string';
+
+    const trustNumeric =
+      isPopulatedDonor && typeof donorDoc.trustScore?.score === 'number'
+        ? donorDoc.trustScore.score
+        : 50;
+
+    post.donor = isPopulatedDonor
+      ? {
+          _id: donorDoc._id,
+          fullName: donorDoc.fullName,
+          avatar: donorDoc.avatar,
+          email: donorDoc.email,
+          phone: donorDoc.phone,
+          trustScore: trustNumeric,
+          sharesCount,
+        }
+      : {
+          fullName: 'Ẩn danh',
+          trustScore: 50,
+          sharesCount: 0,
+        };
     delete post.donorId;
 
     return sendSuccess(res, post);
@@ -267,7 +299,50 @@ export const getMyPosts = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    return sendSuccess(res, posts);
+    const ids = posts.map((p) => p._id);
+    if (ids.length === 0) {
+      return sendSuccess(res, posts);
+    }
+
+    const counts = await Request.aggregate([
+      { $match: { postId: { $in: ids } } },
+      {
+        $group: {
+          _id: '$postId',
+          pendingCount: {
+            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },
+          },
+          acceptedCount: {
+            $sum: { $cond: [{ $eq: ['$status', 'accepted'] }, 1, 0] },
+          },
+          completedCount: {
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] },
+          },
+        },
+      },
+    ]);
+
+    const byPost = Object.fromEntries(
+      counts.map((c) => [
+        String(c._id),
+        {
+          pendingCount: c.pendingCount || 0,
+          acceptedCount: c.acceptedCount || 0,
+          completedCount: c.completedCount || 0,
+        },
+      ])
+    );
+
+    const enriched = posts.map((p) => ({
+      ...p,
+      requestSummary: byPost[String(p._id)] || {
+        pendingCount: 0,
+        acceptedCount: 0,
+        completedCount: 0,
+      },
+    }));
+
+    return sendSuccess(res, enriched);
   } catch (err) {
     next(err);
   }

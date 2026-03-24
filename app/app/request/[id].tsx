@@ -4,8 +4,10 @@ import { Text } from '../../components/ui/text';
 import { ArrowLeft, Check, Hourglass, X, MessageCircle, CheckCircle } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { requestService, type RequestData } from '@/services/requestService';
 import { getConversationByPost } from '@/services/chatService';
+import { authService } from '@/services/authService';
 import { Toast } from '@/components/ui/Toast';
 import { useToast } from '@/hooks/useToast';
 
@@ -67,16 +69,52 @@ const STATUS_CONFIG: Record<Status, {
   },
 };
 
+const DONOR_COPY: Partial<Record<Status, { title: string; subtitle: string }>> = {
+  pending: {
+    title: 'Có người xin nhận món',
+    subtitle:
+      'Vào Hồ sơ → Yêu cầu trên bài của tôi (tab Chờ duyệt) để chấp nhận hoặc từ chối.',
+  },
+  accepted: {
+    title: 'Bạn đã chấp nhận yêu cầu',
+    subtitle: 'Nhắn tin với người nhận để hẹn thời gian và địa điểm lấy món.',
+  },
+  rejected: {
+    title: 'Bạn đã từ chối yêu cầu này',
+    subtitle: 'Người nhận đã được thông báo. Họ có thể tìm món khác trên bảng tin.',
+  },
+  completed: {
+    title: 'Giao dịch hoàn tất',
+    subtitle: 'Cảm ơn bạn đã hoàn tất chia sẻ. Bạn vẫn có thể xem lại tin nhắn.',
+  },
+  cancelled: {
+    title: 'Yêu cầu đã hủy',
+    subtitle: 'Giao dịch không còn hiệu lực. Kiểm tra tin nhắn nếu từng được chấp nhận.',
+  },
+};
+
 export default function RequestStatus() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const { toast, showToast, hideToast } = useToast();
 
   const [request, setRequest] = useState<RequestData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    authService.getCurrentUser().then((u) => {
+      if (!cancelled) setCurrentUserId(u?._id != null ? String(u._id) : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const fetchRequest = useCallback(async (showSpinner = true) => {
     if (!id) return;
@@ -106,6 +144,7 @@ export default function RequestStatus() {
       setIsCancelling(true);
       await requestService.cancelRequest(request._id);
       showToast('Đã hủy yêu cầu', 'success');
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       await fetchRequest(false);
     } catch (e: any) {
       showToast(e?.response?.data?.message || 'Không thể hủy yêu cầu', 'error');
@@ -148,9 +187,21 @@ export default function RequestStatus() {
   }
 
   const status = (request.status || 'pending') as Status;
-  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
+  const donorIdRaw =
+    typeof request.donorId === 'object' && request.donorId !== null
+      ? (request.donorId as { _id?: string })._id
+      : request.donorId;
+  const isDonor =
+    !!currentUserId && donorIdRaw != null && String(donorIdRaw) === String(currentUserId);
+
+  const cfgBase = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
+  const donorExtra = isDonor ? DONOR_COPY[status] : undefined;
+  const cfg = donorExtra ? { ...cfgBase, ...donorExtra } : cfgBase;
+
   const post = typeof request.postId === 'object' ? request.postId : null;
   const donor = typeof request.donorId === 'object' ? request.donorId : null;
+  const receiver =
+    typeof request.receiverId === 'object' ? request.receiverId : null;
 
   // Stepper logic
   const stepDone = status !== 'pending';
@@ -264,7 +315,12 @@ export default function RequestStatus() {
               <View className="flex-col gap-1 flex-1">
                 <Text className="font-bold text-slate-900" numberOfLines={1}>{post.title}</Text>
                 <Text className="text-sm text-slate-500">
-                  Người đăng: <Text className="font-bold text-[#2E7D32]">{donor?.fullName || 'Ẩn danh'}</Text>
+                  {isDonor ? 'Người nhận: ' : 'Người đăng: '}
+                  <Text className="font-bold text-[#2E7D32]">
+                    {isDonor
+                      ? receiver?.fullName || 'Ẩn danh'
+                      : donor?.fullName || 'Ẩn danh'}
+                  </Text>
                 </Text>
               </View>
             </View>
@@ -277,8 +333,7 @@ export default function RequestStatus() {
 
           {/* Action buttons */}
           <View className="flex-col w-full gap-3">
-            {/* Accepted: show Chat CTA */}
-            {status === 'accepted' && (
+            {(status === 'accepted' || status === 'completed') && (
               <TouchableOpacity
                 onPress={handleOpenChat}
                 disabled={isChatLoading}
@@ -286,15 +341,28 @@ export default function RequestStatus() {
                 style={{ shadowColor: '#2E7D32', shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 }}
                 activeOpacity={0.85}
               >
-                {isChatLoading
-                  ? <ActivityIndicator size="small" color="white" />
-                  : <MessageCircle size={20} color="white" />}
-                <Text className="text-white font-extrabold text-base">Nhắn tin với người đăng</Text>
+                {isChatLoading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <MessageCircle size={20} color="white" />
+                )}
+                <Text className="text-white font-extrabold text-base">
+                  {isDonor ? 'Nhắn tin với người nhận' : 'Nhắn tin với người cho'}
+                </Text>
               </TouchableOpacity>
             )}
 
-            {/* Rejected / Cancelled: go explore */}
-            {(status === 'rejected' || status === 'cancelled') && (
+            {status === 'pending' && isDonor && (
+              <TouchableOpacity
+                onPress={() => router.push('/donor-requests' as any)}
+                className="w-full h-14 bg-[#1B5E20] rounded-2xl flex-row items-center justify-center gap-2"
+                activeOpacity={0.85}
+              >
+                <Text className="text-white font-extrabold text-base">Mở màn hình phê duyệt</Text>
+              </TouchableOpacity>
+            )}
+
+            {(status === 'rejected' || status === 'cancelled') && !isDonor && (
               <TouchableOpacity
                 onPress={() => router.replace('/(tabs)/explore' as any)}
                 className="w-full h-14 bg-[#2E7D32] rounded-2xl items-center justify-center shadow-lg"
@@ -304,28 +372,26 @@ export default function RequestStatus() {
               </TouchableOpacity>
             )}
 
-            {/* Always: go home */}
-            {status !== 'accepted' && (
-              <TouchableOpacity
-                onPress={() => router.replace('/(tabs)' as any)}
-                className="w-full h-14 bg-slate-100 rounded-2xl items-center justify-center"
-                activeOpacity={0.85}
-              >
-                <Text className="text-slate-700 font-bold text-base">← Về trang chủ</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              onPress={() => router.replace('/(tabs)' as any)}
+              className="w-full h-14 bg-slate-100 rounded-2xl items-center justify-center"
+              activeOpacity={0.85}
+            >
+              <Text className="text-slate-700 font-bold text-base">← Về trang chủ</Text>
+            </TouchableOpacity>
 
-            {/* Pending: show cancel */}
-            {status === 'pending' && (
+            {status === 'pending' && !isDonor && (
               <TouchableOpacity
                 onPress={handleCancel}
                 disabled={isCancelling}
                 className="w-full py-3 items-center"
                 activeOpacity={0.7}
               >
-                {isCancelling
-                  ? <ActivityIndicator size="small" color="#EF5350" />
-                  : <Text className="text-sm font-semibold text-red-500">Hủy yêu cầu này</Text>}
+                {isCancelling ? (
+                  <ActivityIndicator size="small" color="#EF5350" />
+                ) : (
+                  <Text className="text-sm font-semibold text-red-500">Hủy yêu cầu này</Text>
+                )}
               </TouchableOpacity>
             )}
           </View>

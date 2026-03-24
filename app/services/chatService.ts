@@ -24,11 +24,20 @@ export const getChatMessages = async (conversationId: string, page = 1, limit = 
   return response.data.data as { messages: Message[]; conversation: ConversationDetail };
 };
 
-/** PUT /api/v1/requests/:id/complete – mark a request as completed */
-export const completeRequest = async (requestId: string) => {
+/** PUT /api/v1/requests/:id/complete — mỗi bên bấm một lần; khi đủ hai bên mới chốt */
+export const completeRequest = async (requestId: string): Promise<CompleteRequestResponse> => {
   const response = await api.put(`/requests/${requestId}/complete`);
   return response.data.data;
 };
+
+export interface CompleteRequestResponse {
+  message: string;
+  fullyCompleted: boolean;
+  donorConfirmed: boolean;
+  receiverConfirmed: boolean;
+  request?: unknown;
+  transaction?: unknown;
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -79,4 +88,7 @@ export interface ConversationDetail {
   otherUser: OtherUser;
   postTitle: string;
   postImage?: string | null;
+  donorConfirmed?: boolean;
+  receiverConfirmed?: boolean;
+  requestStatus?: string | null;
 }

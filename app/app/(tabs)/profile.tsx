@@ -1,62 +1,100 @@
-import React, { useState, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, TouchableOpacity, Image, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Settings, Award, Leaf, Heart, ChevronRight, LogOut, Package, MessageCircle, MapPin } from 'lucide-react-native';
+import {
+  Settings,
+  Award,
+  Leaf,
+  Heart,
+  ChevronRight,
+  LogOut,
+  Package,
+  BellRing,
+  Inbox,
+} from 'lucide-react-native';
 import { Text } from '../../components/ui/text';
 import { Card } from '../../components/ui/card';
 import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
+import { useQuery } from '@tanstack/react-query';
 import { authService } from '../../services/authService';
-import { impactService, type ImpactStats } from '../../services/impactService';
-import { favoriteService } from '../../services/favoriteService';
-import { type PostData } from '@/services/postService';
-import { router, useFocusEffect } from 'expo-router';
-import { Toast } from '../../components/ui/Toast';
-import { useToast } from '../../hooks/useToast';
+import { impactService } from '@/services/impactService';
+import { PostService } from '@/features/post/services/post.service';
+import { router } from 'expo-router';
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState<any>(null);
-  const [impact, setImpact] = useState<ImpactStats | null>(null);
-  const [favorites, setFavorites] = useState<PostData[]>([]);
-  const { toast, showToast, hideToast } = useToast();
 
-  const loadData = useCallback(async () => {
-    const data = await authService.getCurrentUser();
-    setUser(data);
-    try {
-      const stats = await impactService.getStats('all');
-      setImpact(stats);
-    } catch {
-      console.warn('Impact stats unavailable');
-    }
-    try {
-      const favs = await favoriteService.getFavoritesLocal();
-      setFavorites(favs);
-    } catch {
-      console.warn('Local favorites unavailable');
-    }
+  const {
+    data: impactStats,
+    isPending: impactPending,
+    isError: impactError,
+  } = useQuery({
+    queryKey: ['impactStats', 'all'],
+    queryFn: () => impactService.getStats('all'),
+    staleTime: 60 * 1000,
+    retry: 2,
+  });
+
+  const { data: myPostsRes, isPending: myPostsPending } = useQuery({
+    queryKey: ['myPosts'],
+    queryFn: PostService.getMyPosts,
+    staleTime: 60 * 1000,
+  });
+
+  const myPostsList = Array.isArray(myPostsRes?.data) ? myPostsRes.data : [];
+  const sharedFallback = myPostsList.filter((p: { status?: string }) => p.status !== 'deleted').length;
+
+  const sharedPostCount =
+    impactStats != null
+      ? (impactStats.postsSharedCount ?? impactStats.totalShared ?? sharedFallback)
+      : sharedFallback;
+  const receivedCount = impactError ? 0 : (impactStats?.receivedCompletedCount ?? 0);
+  const rescuedKg = impactError ? 0 : (impactStats?.rescuedKg ?? 0);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const data = await authService.getCurrentUser();
+      setUser(data);
+    };
+    loadUser();
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
+  const handleLogout = () => {
+    console.log('Logout button clicked');
+    
+    if (Platform.OS === 'web') {
+      const confirmLogout = window.confirm('Bạn có chắc chắn muốn đăng xuất?');
+      if (confirmLogout) {
+        performLogout();
+      }
+    } else {
+      Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
+        { text: 'Hủy', style: 'cancel' },
+        { 
+          text: 'Đăng xuất', 
+          style: 'destructive',
+          onPress: performLogout
+        },
+      ]);
+    }
+  };
 
-  const handleLogout = async () => {
+  const performLogout = async () => {
+    console.log('Performing logout...');
     try {
       await authService.logout();
-      showToast('Đăng xuất thành công!', 'success');
-      setTimeout(() => router.replace('/(auth)/login'), 1000);
-    } catch {
-      showToast('Không thể đăng xuất lúc này.', 'error');
+      console.log('Logout successful, redirecting...');
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      Alert.alert('Lỗi', 'Không thể đăng xuất lúc này.');
     }
   };
 
   return (
     <View className="flex-1 bg-[#F8FAF8]">
-      <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <View
           className="bg-[#2E7D32] rounded-b-[40px] px-6 pb-12 pt-8 relative overflow-hidden"
           style={{ paddingTop: Math.max(insets.top, 20) }}
@@ -65,24 +103,19 @@ export default function Profile() {
 
           <View className="flex-row justify-between items-center mb-8">
             <Text className="text-2xl font-extrabold text-white">Hồ sơ 👤</Text>
-            <View className="flex-row items-center gap-3">
-              <TouchableOpacity 
-                onPress={() => router.push('/(tabs)/messages/index')}
-                className="w-12 h-12 bg-white/20 rounded-full items-center justify-center backdrop-blur-md" 
-                activeOpacity={0.8}
-              >
-                <MessageCircle size={22} color="white" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity className="w-12 h-12 bg-white/20 rounded-full items-center justify-center backdrop-blur-md" activeOpacity={0.8}>
-                <Settings size={22} color="white" />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity className="w-12 h-12 bg-white/20 rounded-full items-center justify-center backdrop-blur-md" activeOpacity={0.8}>
+              <Settings size={22} color="white" />
+            </TouchableOpacity>
           </View>
 
           <View className="flex-row items-center gap-5">
             <View className="relative">
-              <Image source={{ uri: user?.avatar || "https://i.pravatar.cc/150?img=11" }} className="w-24 h-24 rounded-full border-4 border-white shadow-xl bg-slate-200" />
+              <Image
+                source={{
+                  uri: user?.avatar || 'https://i.pravatar.cc/150?img=11',
+                }}
+                className="w-24 h-24 rounded-full border-4 border-white shadow-xl"
+              />
               <View className="absolute bottom-1 right-1 w-6 h-6 bg-green-400 border-4 border-white rounded-full" />
             </View>
             <View className="flex-1">
@@ -90,7 +123,9 @@ export default function Profile() {
               <Text className="text-white/80 font-medium mb-2">{user?.email || 'Email chưa cập nhật'}</Text>
               <View className="bg-white/20 self-start px-3 py-1 rounded-full flex-row items-center gap-1.5">
                 <Award size={14} color="#FDE047" />
-                <Text className="text-white font-bold text-xs">{impact?.levelName || 'Người mới'}</Text>
+                <Text className="text-white font-bold text-xs">
+                  {impactStats?.levelName || 'Người mới'}
+                </Text>
               </View>
             </View>
           </View>
@@ -102,70 +137,59 @@ export default function Profile() {
               <View className="w-12 h-12 bg-[#E8F5E9] rounded-full items-center justify-center mb-2">
                 <Package size={24} color="#2E7D32" />
               </View>
-              <Text className="text-2xl font-extrabold text-[#1A2E1A]">{impact?.totalShared ?? 0}</Text>
+              <Text className="text-2xl font-extrabold text-[#1A2E1A]">
+                {myPostsPending ? '–' : sharedPostCount}
+              </Text>
               <Text className="text-xs font-bold text-slate-500 text-center">Đã chia sẻ</Text>
             </View>
             <View className="w-px bg-slate-100 mx-2" />
             <View className="items-center flex-1">
               <View className="w-12 h-12 bg-blue-50 rounded-full items-center justify-center mb-2">
-                <Leaf size={24} color="#F59E0B" />
+                <Heart size={24} color="#3B82F6" />
               </View>
-              <Text className="text-2xl font-extrabold text-[#1A2E1A]">{impact?.totalFoodKg ?? 0}kg</Text>
-              <Text className="text-xs font-bold text-slate-500 text-center">Đã cứu</Text>
+              <Text className="text-2xl font-extrabold text-[#1A2E1A]">
+                {impactPending && !impactError ? '–' : receivedCount}
+              </Text>
+              <Text className="text-xs font-bold text-slate-500 text-center">Đã nhận</Text>
             </View>
             <View className="w-px bg-slate-100 mx-2" />
             <View className="items-center flex-1">
-              <View className="w-12 h-12 bg-emerald-50 rounded-full items-center justify-center mb-2">
-                <Heart size={24} color="#10B981" />
+              <View className="w-12 h-12 bg-amber-50 rounded-full items-center justify-center mb-2">
+                <Leaf size={24} color="#F59E0B" />
               </View>
-              <Text className="text-2xl font-extrabold text-[#1A2E1A]">{impact?.exp ?? 0}</Text>
-              <Text className="text-xs font-bold text-slate-500 text-center">Điểm XP</Text>
+              <Text className="text-2xl font-extrabold text-[#1A2E1A]">
+                {impactPending && !impactError ? '–' : `${rescuedKg}kg`}
+              </Text>
+              <Text className="text-xs font-bold text-slate-500 text-center">Đã cứu</Text>
             </View>
           </Card>
         </Animated.View>
 
-        {/* Favorites Horizontal List */}
-        {favorites.length > 0 && (
-          <View className="mt-8">
-            <View className="px-6 flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-extrabold text-[#1A2E1A]">Ăn ngon đã lưu</Text>
-              <TouchableOpacity onPress={() => router.push('/food/favorites')}>
-                <Text className="text-sm font-bold text-[#2E7D32]">Xem tất cả</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
-              contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
-            >
-              {favorites.map((item) => (
-                <TouchableOpacity 
-                  key={item._id}
-                  onPress={() => router.push(`/food/${item._id}`)}
-                  activeOpacity={0.8}
-                  className="w-40 bg-white rounded-[24px] border border-slate-100 p-2 shadow-sm"
-                >
-                  <Image 
-                    source={{ uri: item.images?.[0] }} 
-                    className="w-full h-28 rounded-[20px] bg-slate-100 mb-2"
-                  />
-                  <Text className="text-sm font-bold text-[#1A2E1A] px-1" numberOfLines={1}>{item.title}</Text>
-                  <View className="flex-row items-center gap-1 px-1 mb-1">
-                    <MapPin size={10} color="#94A3B8" />
-                    <Text className="text-[10px] font-bold text-slate-400" numberOfLines={1}>
-                      {item.location?.district}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
         <View className="px-6 mt-8 gap-4">
           <Text className="text-xl font-extrabold text-[#1A2E1A] mb-2">Tài khoản</Text>
+
           {[
-            { icon: Package, label: 'Bài đăng của tôi', color: '#3B82F6', bg: 'bg-blue-50', onPress: () => {} },
+            {
+              icon: Package,
+              label: 'Bài đăng của tôi',
+              color: '#3B82F6',
+              bg: 'bg-blue-50',
+              onPress: () => router.push('/my-posts' as any),
+            },
+            {
+              icon: BellRing,
+              label: 'Yêu cầu trên bài của tôi',
+              color: '#2E7D32',
+              bg: 'bg-[#E8F5E9]',
+              onPress: () => router.push('/donor-requests' as any),
+            },
+            {
+              icon: Inbox,
+              label: 'Yêu cầu nhận món tôi đã gửi',
+              color: '#2563EB',
+              bg: 'bg-blue-50',
+              onPress: () => router.push('/request/me' as any),
+            },
             { icon: Heart, label: 'Danh sách quan tâm', color: '#E53935', bg: 'bg-red-50', onPress: () => router.push('/wishlist' as any) },
             { icon: Award, label: 'Huy hiệu & Thành tích', color: '#F59E0B', bg: 'bg-amber-50', onPress: () => {} },
           ].map((item, index) => (
@@ -177,75 +201,12 @@ export default function Profile() {
                   </View>
                   <Text className="font-bold text-base text-[#1A2E1A]">{item.label}</Text>
                 </View>
-                <View>
-                  <Text className="font-bold text-base text-[#1A2E1A]">Bài đăng của tôi</Text>
-                  <Text className="text-[10px] font-bold text-slate-400">Quản lý thực phẩm của bạn</Text>
+                <View className="w-10 h-10 bg-[#F8FAF8] rounded-full items-center justify-center">
+                  <ChevronRight size={20} color="#94A3B8" />
                 </View>
-              </View>
-              <View className="w-10 h-10 bg-[#F8FAF8] rounded-full items-center justify-center">
-                <ChevronRight size={20} color="#94A3B8" />
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <Animated.View entering={FadeInRight.duration(500).delay(200)}>
-            <TouchableOpacity 
-              onPress={() => router.push('/request/me')}
-              activeOpacity={0.8} 
-              className="flex-row items-center justify-between bg-white p-4 rounded-[24px] shadow-sm border border-slate-100"
-            >
-              <View className="flex-row items-center gap-4">
-                <View className="w-12 h-12 bg-pink-50 rounded-full items-center justify-center">
-                  <Heart size={22} color="#EC4899" />
-                </View>
-                <View>
-                  <Text className="font-bold text-base text-[#1A2E1A]">Yêu cầu của tôi</Text>
-                  <Text className="text-[10px] font-bold text-slate-400">Yêu cầu nhận đồ ăn</Text>
-                </View>
-              </View>
-              <View className="w-10 h-10 bg-[#F8FAF8] rounded-full items-center justify-center">
-                <ChevronRight size={20} color="#94A3B8" />
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-          <Animated.View entering={FadeInRight.duration(500).delay(250)}>
-            <TouchableOpacity 
-              onPress={() => router.push('/food/favorites')}
-              activeOpacity={0.8} 
-              className="flex-row items-center justify-between bg-white p-4 rounded-[24px] shadow-sm border border-slate-100"
-            >
-              <View className="flex-row items-center gap-4">
-                <View className="w-12 h-12 bg-red-50 rounded-full items-center justify-center">
-                  <Heart size={22} color="#EF4444" fill="#EF4444" />
-                </View>
-                <View>
-                  <Text className="font-bold text-base text-[#1A2E1A]">Đã lưu trữ</Text>
-                  <Text className="text-[10px] font-bold text-slate-400">Các món ăn yêu thích của bạn</Text>
-                </View>
-              </View>
-              <View className="w-10 h-10 bg-[#F8FAF8] rounded-full items-center justify-center">
-                <ChevronRight size={20} color="#94A3B8" />
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-
-
-          <Animated.View entering={FadeInRight.duration(500).delay(300)}>
-            <TouchableOpacity activeOpacity={0.8} className="flex-row items-center justify-between bg-white p-4 rounded-[24px] shadow-sm border border-slate-100">
-              <View className="flex-row items-center gap-4">
-                <View className="w-12 h-12 bg-amber-50 rounded-full items-center justify-center">
-                  <Award size={22} color="#F59E0B" />
-                </View>
-                <View>
-                  <Text className="font-bold text-base text-[#1A2E1A]">Huy hiệu & Thành tích</Text>
-                  <Text className="text-[10px] font-bold text-slate-400">Cấp: {impact?.levelName || 'Người mới'}</Text>
-                </View>
-              </View>
-              <View className="w-10 h-10 bg-[#F8FAF8] rounded-full items-center justify-center">
-                <ChevronRight size={20} color="#94A3B8" />
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
+              </TouchableOpacity>
+            </Animated.View>
+          ))}
 
           <TouchableOpacity 
             onPress={handleLogout}

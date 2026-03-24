@@ -6,9 +6,11 @@ export interface RequestData {
   postId: any;
   receiverId: any;
   donorId: any;
+  requestedQty?: number;
+  message?: string;
   status: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed';
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export const requestService = {
@@ -62,6 +64,12 @@ export const requestService = {
   /** GET /requests/me - Lấy danh sách yêu cầu đã gửi (Receiver) */
   getMyRequests: async (): Promise<RequestData[]> => {
     const res = await apiClient.get('/requests/me');
+    return res.data.data;
+  },
+
+  /** GET /requests/donor/history - Mọi yêu cầu trên bài của người cho (cả chờ & đã xử lý) */
+  getDonorRequestHistory: async (): Promise<RequestData[]> => {
+    const res = await apiClient.get('/requests/donor/history');
     return res.data.data;
   },
 };

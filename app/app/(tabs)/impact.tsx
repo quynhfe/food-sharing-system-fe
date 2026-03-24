@@ -131,7 +131,7 @@ export default function ImpactScreen() {
     isLoading: statsLoading,
     refetch: refetchStats,
   } = useQuery({
-    queryKey: ['impact-stats', period],
+    queryKey: ['impactStats', period],
     queryFn: () => impactService.getStats(period),
     staleTime: 2 * 60 * 1000, // cache 2 phút
   });
@@ -245,13 +245,13 @@ export default function ImpactScreen() {
               <KpiCard
                 icon={<ShoppingBag size={20} color="#EA580C" />}
                 iconBg="#FFEDD5"
-                value={`${stats?.totalShared ?? 0} món`}
+                value={`${stats?.postsSharedCount ?? stats?.totalShared ?? 0} món`}
                 label="Đã chia sẻ"
               />
               <KpiCard
                 icon={<Recycle size={20} color={PRIMARY} />}
                 iconBg="#DCFCE7"
-                value={`${stats?.totalFoodKg ?? 0} kg`}
+                value={`${stats?.rescuedKg ?? stats?.totalFoodKg ?? 0} kg`}
                 label="Thực phẩm đã cứu"
               />
             </View>

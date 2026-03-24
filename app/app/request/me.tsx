@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { View, FlatList, TouchableOpacity, ActivityIndicator, Image, RefreshControl } from 'react-native';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
+import { View, FlatList, TouchableOpacity, ActivityIndicator, Image, RefreshControl, ScrollView } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { ArrowLeft, Clock, MapPin, ChevronRight, MessageCircle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,23 @@ import { useToast } from '@/hooks/useToast';
 import { Toast } from '@/components/ui/Toast';
 import { Badge } from '@/components/ui/badge';
 
+type RequestFilter = 'all' | 'pending' | 'success' | 'fail';
+
+const FILTER_CHIPS: { key: RequestFilter; label: string }[] = [
+  { key: 'all', label: 'Tất cả' },
+  { key: 'pending', label: 'Chờ duyệt' },
+  { key: 'success', label: 'Đã duyệt / hoàn tất' },
+  { key: 'fail', label: 'Từ chối / hủy' },
+];
+
+function matchesFilter(status: string, filter: RequestFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'pending') return status === 'pending';
+  if (filter === 'success') return status === 'accepted' || status === 'completed';
+  if (filter === 'fail') return status === 'rejected' || status === 'cancelled';
+  return true;
+}
+
 export default function MyRequests() {
   const insets = useSafeAreaInsets();
   const { toast, showToast, hideToast } = useToast();
@@ -17,6 +34,7 @@ export default function MyRequests() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [chatLoading, setChatLoading] = useState<string | null>(null);
+  const [filter, setFilter] = useState<RequestFilter>('all');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchMyRequests = useCallback(async (showLoading = true) => {
@@ -60,13 +78,18 @@ export default function MyRequests() {
     fetchMyRequests(false);
   };
 
+  const filteredRequests = useMemo(
+    () => requests.filter((r) => matchesFilter(r.status, filter)),
+    [requests, filter]
+  );
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending': return { label: 'Chờ xét duyệt', variant: 'default' };
-      case 'accepted': return { label: 'Chấp nhận', variant: 'success' };
+      case 'accepted': return { label: 'Đã chấp nhận', variant: 'success' };
       case 'rejected': return { label: 'Từ chối', variant: 'destructive' };
       case 'completed': return { label: 'Hoàn tất', variant: 'success' };
-      case 'cancelled': return { label: 'Đã hủy', variant: 'secondary' };
+      case 'cancelled': return { label: 'Đã hủy', variant: 'default' };
       default: return { label: status, variant: 'default' };
     }
   };
@@ -76,56 +99,76 @@ export default function MyRequests() {
     const donor = item.donorId;
     const badge = getStatusBadge(item.status);
 
+    const showChat =
+      (item.status === 'accepted' || item.status === 'completed') && post?._id;
+
     return (
-      <TouchableOpacity 
-        onPress={() => router.push(`/request/${item._id}`)}
-        activeOpacity={0.8}
-        className="bg-white p-4 rounded-[24px] mb-4 shadow-sm border border-slate-100 flex-row gap-4"
-      >
-        <Image 
-          source={{ uri: post?.images?.[0] || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800' }} 
-          className="w-20 h-20 rounded-2xl bg-slate-100" 
-        />
-          <View className="flex-1">
-            <View className="flex-row justify-between items-start mb-1">
-              <Text className="text-base font-extrabold text-[#1A2E1A] flex-1 mr-2" numberOfLines={1}>
+      <View className="bg-white p-4 rounded-[24px] mb-4 shadow-sm border border-slate-100 flex-row gap-2 items-stretch">
+        <TouchableOpacity
+          onPress={() => router.push(`/request/${item._id}`)}
+          activeOpacity={0.8}
+          className="flex-1 flex-row gap-4 min-w-0"
+        >
+          <Image
+            source={{
+              uri:
+                post?.images?.[0] ||
+                'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800',
+            }}
+            className="w-20 h-20 rounded-2xl bg-slate-100"
+          />
+          <View className="flex-1 min-w-0">
+            <View className="flex-row justify-between items-start mb-1 gap-2">
+              <Text
+                className="text-base font-extrabold text-[#1A2E1A] flex-1"
+                numberOfLines={1}
+              >
                 {post?.title || 'Bài đăng đã bị xóa'}
               </Text>
               <Badge label={badge.label} variant={badge.variant as any} />
             </View>
-            <Text className="text-xs font-bold text-slate-500 mb-2">Đăng bởi {donor?.fullName || 'Ẩn danh'}</Text>
-            <View className="flex-row items-center gap-3">
-               <View className="flex-row items-center gap-1">
-                 <Clock size={12} color="#94A3B8" />
-                 <Text className="text-[10px] font-bold text-slate-400">
-                   {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : '--'}
-                 </Text>
-               </View>
-               <View className="flex-row items-center gap-1">
-                 <MapPin size={12} color="#94A3B8" />
-                 <Text className="text-[10px] font-bold text-slate-400">
-                   {post?.location?.district || ''}
-                 </Text>
-               </View>
+            <Text className="text-xs font-bold text-slate-500 mb-2">
+              Đăng bởi {donor?.fullName || 'Ẩn danh'}
+            </Text>
+            <View className="flex-row items-center gap-3 flex-wrap">
+              <View className="flex-row items-center gap-1">
+                <Clock size={12} color="#94A3B8" />
+                <Text className="text-[10px] font-bold text-slate-400">
+                  {item.createdAt
+                    ? new Date(item.createdAt).toLocaleDateString('vi-VN')
+                    : '--'}
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-1">
+                <MapPin size={12} color="#94A3B8" />
+                <Text className="text-[10px] font-bold text-slate-400">
+                  {post?.location?.district || ''}
+                </Text>
+              </View>
             </View>
-            {/* Go-to-chat CTA for accepted requests */}
-            {item.status === 'accepted' && (
-              <TouchableOpacity
-                onPress={() => handleOpenChat(post?._id)}
-                disabled={chatLoading === post?._id}
-                className="mt-2 flex-row items-center gap-1.5 bg-blue-50 self-start px-3 py-1.5 rounded-full border border-blue-100"
-              >
-                {chatLoading === post?._id
-                  ? <ActivityIndicator size={12} color="#3B82F6" />
-                  : <MessageCircle size={13} color="#3B82F6" />}
-                <Text className="text-blue-600 font-bold text-[10px]">Nhắn tin ngay</Text>
-              </TouchableOpacity>
-            )}
           </View>
-        <View className="justify-center">
-           <ChevronRight size={20} color="#CBD5E1" />
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+        {showChat ? (
+          <TouchableOpacity
+            onPress={() => handleOpenChat(post._id)}
+            disabled={chatLoading === post._id}
+            className="w-11 rounded-xl bg-blue-50 border border-blue-100 items-center justify-center"
+          >
+            {chatLoading === post._id ? (
+              <ActivityIndicator size="small" color="#3B82F6" />
+            ) : (
+              <MessageCircle size={18} color="#3B82F6" />
+            )}
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity
+          onPress={() => router.push(`/request/${item._id}`)}
+          className="justify-center px-1"
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+        >
+          <ChevronRight size={20} color="#CBD5E1" />
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -144,8 +187,52 @@ export default function MyRequests() {
         >
           <ArrowLeft size={20} color="#1A2E1A" />
         </TouchableOpacity>
-        <Text className="text-xl font-extrabold text-[#1A2E1A]">Yêu cầu của tôi</Text>
+        <View className="flex-1">
+          <Text className="text-xl font-extrabold text-[#1A2E1A]">Yêu cầu của tôi</Text>
+          <Text className="text-xs text-slate-500 font-medium mt-0.5">
+            Món bạn xin nhận — trạng thái phê duyệt & chat
+          </Text>
+        </View>
       </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0, maxHeight: 56, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', backgroundColor: '#fff' }}
+        contentContainerStyle={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+        }}
+      >
+        {FILTER_CHIPS.map((c, index) => (
+          <TouchableOpacity
+            key={c.key}
+            onPress={() => setFilter(c.key)}
+            activeOpacity={0.85}
+            style={{
+              marginRight: index < FILTER_CHIPS.length - 1 ? 8 : 0,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 999,
+              borderWidth: 1,
+              backgroundColor: filter === c.key ? '#2E7D32' : '#f8fafc',
+              borderColor: filter === c.key ? '#2E7D32' : '#e2e8f0',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: '800',
+                color: filter === c.key ? '#fff' : '#475569',
+              }}
+            >
+              {c.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
@@ -153,20 +240,33 @@ export default function MyRequests() {
         </View>
       ) : (
         <FlatList
-          data={requests}
+          data={filteredRequests}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           renderItem={renderRequestItem}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center mt-20">
               <Text className="text-4xl mb-4">🤝</Text>
-              <Text className="text-lg font-bold text-slate-400 text-center">Bạn chưa thực hiện yêu cầu nào</Text>
-              <TouchableOpacity 
-                onPress={() => router.replace('/(tabs)/explore')}
-                className="mt-4 px-6 py-3 bg-[#2E7D32] rounded-2xl"
-              >
-                <Text className="text-white font-bold">Khám phá món ngon ngay</Text>
-              </TouchableOpacity>
+              <Text className="text-lg font-bold text-slate-400 text-center px-4">
+                {requests.length === 0
+                  ? 'Bạn chưa gửi yêu cầu nhận món nào'
+                  : 'Không có yêu cầu trong bộ lọc này'}
+              </Text>
+              {requests.length === 0 ? (
+                <TouchableOpacity
+                  onPress={() => router.replace('/(tabs)/explore')}
+                  className="mt-4 px-6 py-3 bg-[#2E7D32] rounded-2xl"
+                >
+                  <Text className="text-white font-bold">Khám phá món ngon</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setFilter('all')}
+                  className="mt-4 px-6 py-3 bg-slate-200 rounded-2xl"
+                >
+                  <Text className="text-slate-800 font-bold">Xem tất cả</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
           refreshControl={

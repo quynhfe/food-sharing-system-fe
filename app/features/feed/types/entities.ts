@@ -9,6 +9,8 @@ export interface PostDonor {
 export interface FoodPost {
   _id: string;
   donorId: PostDonor | string;
+  /** Khi donorId là id string, API (wishlist, …) có thể gửi kèm object donor đã populate */
+  donor?: Partial<PostDonor> & { _id?: string; trustScore?: unknown };
   title: string;
   description: string;
   category: 'cooked' | 'raw' | 'packaged' | 'other';
@@ -31,4 +33,10 @@ export interface FoodPost {
   updatedAt: string;
   calculatedDistance?: number; // Only present when filter=nearby
   pendingRequestsCount?: number; // Count of pending requests for the donor
+  /** Gắn từ GET /posts/me — thống kê yêu cầu theo bài (chủ bài) */
+  requestSummary?: {
+    pendingCount: number;
+    acceptedCount: number;
+    completedCount: number;
+  };
 }

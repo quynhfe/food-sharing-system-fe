@@ -126,11 +126,18 @@ export const getChatMessages = async (req, res, next) => {
       .populate('receiverId', 'fullName avatar')
       .populate({
         path: 'transactionId',
-        populate: {
-          path: 'postId',
-          model: 'FoodPost',
-          select: 'title images',
-        },
+        populate: [
+          {
+            path: 'postId',
+            model: 'FoodPost',
+            select: 'title images',
+          },
+          {
+            path: 'requestId',
+            model: 'Request',
+            select: 'status',
+          },
+        ],
       });
 
     if (!conversation) {
@@ -153,11 +160,13 @@ export const getChatMessages = async (req, res, next) => {
     const isUserDonor = conversation.donorId._id.toString() === userId.toString();
     const otherUser = isUserDonor ? conversation.receiverId : conversation.donorId;
     const post = conversation.transactionId?.postId;
+    const tx = conversation.transactionId;
+    const txObj = tx && typeof tx === 'object' ? tx : null;
 
     const conversationInfo = {
       _id: conversation._id,
-      transactionId: conversation.transactionId?._id ?? conversation.transactionId,
-      requestId: conversation.transactionId?.requestId ?? null,
+      transactionId: txObj?._id ?? conversation.transactionId,
+      requestId: txObj?.requestId?._id ?? txObj?.requestId ?? null,
       donorId: conversation.donorId._id,
       receiverId: conversation.receiverId._id,
       status: conversation.status,
@@ -168,6 +177,12 @@ export const getChatMessages = async (req, res, next) => {
       },
       postTitle: post?.title || '',
       postImage: post?.images?.[0] || null,
+      donorConfirmed: !!(txObj && txObj.donorConfirmed),
+      receiverConfirmed: !!(txObj && txObj.receiverConfirmed),
+      requestStatus:
+        txObj?.requestId && typeof txObj.requestId === 'object'
+          ? txObj.requestId.status
+          : null,
     };
 
     return sendSuccess(res, { messages, conversation: conversationInfo });

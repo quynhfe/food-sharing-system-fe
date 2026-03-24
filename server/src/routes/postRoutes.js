@@ -1,16 +1,5 @@
 import express from 'express';
-<<<<<<< HEAD
-import { getPosts, createPost, getPostById, getMyPosts, updatePost } from '../controllers/postController.js';
-import { protect } from '../middlewares/authMiddleware.js';
 
-const router = express.Router();
-
-router.get('/', getPosts);
-router.post('/', protect, createPost);
-router.get('/me', protect, getMyPosts);
-router.get('/:id', getPostById);
-router.put('/:id', protect, updatePost);
-=======
 import {
   getPosts,
   createPost,
@@ -36,6 +25,5 @@ router.route('/:id')
   .get(getPostDetails)
   .put(protect, updatePost)
   .delete(protect, deletePost);
->>>>>>> origin/feat/wishlist-search-map-post
 
 export default router;

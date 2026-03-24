@@ -28,10 +28,7 @@ export default function RootLayout() {
     }
   }, [loaded, error]);
 
-  if (!loaded && !error) {
-    return null;
-  }
-
+  // Always mount Stack so navigation context stays consistent (avoid null root before first paint).
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
@@ -41,6 +38,7 @@ export default function RootLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
+            <Stack.Screen name="donor-requests" />
             <Stack.Screen name="food/[id]" options={{ presentation: 'modal' }} />
           </Stack>
         </ToastProvider>

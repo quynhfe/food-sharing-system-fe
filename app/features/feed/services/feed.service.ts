@@ -22,7 +22,7 @@ export class FeedService {
       }
       if (params.maxDistance) queryParams.append('maxDistance', String(params.maxDistance));
 
-      const response = await apiClient.get(`${this.basePath}?${queryParams.toString()}`);
+      const response = await apiClient.get(`${FeedService.basePath}?${queryParams.toString()}`);
       
       return { 
         data: response.data.data || response.data, 

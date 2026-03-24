@@ -8,7 +8,8 @@ import {
   getIncomingRequests,
   getRequestById,
   reportNoShow,
-  getMyRequests
+  getMyRequests,
+  getDonorRequestHistory,
 } from '../controllers/requestController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 
@@ -20,7 +21,8 @@ router.post('/:id/reject', protect, rejectRequest);
 router.post('/:id/cancel', protect, cancelRequest);
 router.put('/:id/complete', protect, completeRequest);
 
-// Order matters: define /post/:postId and /me before /:id
+// Order matters: static paths before /:id
+router.get('/donor/history', protect, getDonorRequestHistory);
 router.get('/post/:postId', protect, getIncomingRequests);
 router.get('/me', protect, getMyRequests);
 router.get('/:id', protect, getRequestById);

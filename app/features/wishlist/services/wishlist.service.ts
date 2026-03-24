@@ -29,7 +29,7 @@ export class WishlistService {
     postId: string
   ): Promise<ApiResponse<{ _id: string; userId: string; postId: string }>> {
     try {
-      const response = await apiClient.post(this.basePath, { postId }, { timeout: 10000 });
+      const response = await apiClient.post(WishlistService.basePath, { postId }, { timeout: 10000 });
       return {
         data: response.data?.data ?? null,
         error: null,
@@ -51,7 +51,7 @@ export class WishlistService {
     search?: string;
   }): Promise<ApiResponse<WishlistPaginatedResponse>> {
     try {
-      const response = await apiClient.get(this.basePath, {
+      const response = await apiClient.get(WishlistService.basePath, {
         params: {
           page: params.page || 1,
           limit: params.limit || 10,
@@ -76,7 +76,7 @@ export class WishlistService {
 
   static async removeFromWishlist(id: string): Promise<ApiResponse<null>> {
     try {
-      await apiClient.delete(`${this.basePath}/${id}`, { timeout: 10000 });
+      await apiClient.delete(`${WishlistService.basePath}/${id}`, { timeout: 10000 });
       return { data: null, error: null };
     } catch (error: any) {
       return {
@@ -93,7 +93,7 @@ export class WishlistService {
     postId: string
   ): Promise<ApiResponse<{ wishlisted: boolean; wishlistId: string | null }>> {
     try {
-      const response = await apiClient.get(`${this.basePath}/check/${postId}`, {
+      const response = await apiClient.get(`${WishlistService.basePath}/check/${postId}`, {
         timeout: 10000,
       });
       return {

@@ -1,14 +1,26 @@
 import apiClient from '@/services/api-client';
 import type { ApiResponse } from '@/types/api';
 
+export type NotificationType =
+  | 'SYSTEM'
+  | 'POST_EXPIRED'
+  | 'REQUEST_RECEIVED'
+  | 'REQUEST_ACCEPTED'
+  | 'REQUEST_REJECTED'
+  | 'REQUEST_CANCELLED'
+  | 'TRANSACTION_COMPLETED'
+  | 'WARNING';
+
 export interface NotificationItem {
   _id: string;
   userId: string;
-  type: 'SYSTEM' | 'POST_EXPIRED' | 'REQUEST_RECEIVED' | 'REQUEST_ACCEPTED' | 'WARNING';
+  type: NotificationType;
   title: string;
   message: string;
   isRead: boolean;
-  relatedPostId?: { _id: string; title: string };
+  relatedPostId?: { _id: string; title: string } | string;
+  relatedRequestId?: string;
+  relatedConversationId?: string | { _id: string };
   createdAt: string;
 }
 
@@ -29,7 +41,7 @@ export class NotificationService {
 
   static async getNotifications(params: { page?: number; limit?: number }): Promise<ApiResponse<NotificationPaginatedResponse>> {
     try {
-      const response = await apiClient.get(this.basePath, {
+      const response = await apiClient.get(NotificationService.basePath, {
         params: {
           page: params.page || 1,
           limit: params.limit || 15,
@@ -49,7 +61,7 @@ export class NotificationService {
 
   static async markAsRead(id: string): Promise<ApiResponse<any>> {
     try {
-      const response = await apiClient.put(`${this.basePath}/${id}/read`);
+      const response = await apiClient.put(`${NotificationService.basePath}/${id}/read`);
       return {
         data: response.data?.data ?? null,
         error: null,
@@ -64,7 +76,7 @@ export class NotificationService {
 
   static async markAllAsRead(): Promise<ApiResponse<any>> {
     try {
-      const response = await apiClient.put(`${this.basePath}/read-all`);
+      const response = await apiClient.put(`${NotificationService.basePath}/read-all`);
       return {
         data: response.data?.data ?? null,
         error: null,

@@ -14,7 +14,7 @@ import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 interface ToastProps {
   message: string;
@@ -75,7 +75,9 @@ export const Toast: React.FC<ToastProps> = ({
     switch (type) {
       case 'success': return <CheckCircle size={20} color="#059669" />;
       case 'error': return <AlertCircle size={20} color="#DC2626" />;
+      case 'warning': return <AlertCircle size={20} color="#D97706" />;
       case 'info': return <Info size={20} color="#2563EB" />;
+      default: return <Info size={20} color="#2563EB" />;
     }
   };
 
@@ -83,7 +85,10 @@ export const Toast: React.FC<ToastProps> = ({
     switch (type) {
       case 'success': return { bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-900', iconBg: 'bg-emerald-100/50' };
       case 'error': return { bg: 'bg-red-50', border: 'border-red-100', text: 'text-red-900', iconBg: 'bg-red-100/50' };
-      case 'info': return { bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-900', iconBg: 'bg-blue-100/50' };
+      case 'warning': return { bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-900', iconBg: 'bg-amber-100/50' };
+      case 'info': 
+      default:
+        return { bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-900', iconBg: 'bg-blue-100/50' };
     }
   };
 

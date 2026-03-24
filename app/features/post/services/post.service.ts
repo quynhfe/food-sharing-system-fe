@@ -32,7 +32,7 @@ export class PostService {
         } as any);
       });
 
-      const response = await apiClient.post(this.basePath, formData, {
+      const response = await apiClient.post(PostService.basePath, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -53,7 +53,7 @@ export class PostService {
 
   static async getPostDetails(id: string): Promise<ApiResponse<any>> {
     try {
-      const response = await apiClient.get(`${this.basePath}/${id}`);
+      const response = await apiClient.get(`${PostService.basePath}/${id}`);
       return {
         data: response.data?.data ?? null,
         error: null,
@@ -67,23 +67,16 @@ export class PostService {
   }
 
   static async getMyPosts(): Promise<ApiResponse<any[]>> {
-    try {
-      const response = await apiClient.get(`${this.basePath}/me`);
-      return {
-        data: response.data?.data ?? null,
-        error: null,
-      };
-    } catch (error: any) {
-      return {
-        data: null,
-        error: error.response?.data?.message || error.message || 'Không thể lấy danh sách bài đăng của bạn',
-      };
-    }
+    const response = await apiClient.get(`${PostService.basePath}/me`);
+    return {
+      data: response.data?.data ?? [],
+      error: null,
+    };
   }
 
   static async deletePost(id: string): Promise<ApiResponse<null>> {
     try {
-      await apiClient.delete(`${this.basePath}/${id}`);
+      await apiClient.delete(`${PostService.basePath}/${id}`);
       return { data: null, error: null };
     } catch (error: any) {
       return {
@@ -95,7 +88,7 @@ export class PostService {
 
   static async getPostsForMap(params: { latitude: number; longitude: number; radius?: number }): Promise<ApiResponse<any[]>> {
     try {
-      const response = await apiClient.get(`${this.basePath}/map`, {
+      const response = await apiClient.get(`${PostService.basePath}/map`, {
         params: {
           latitude: params.latitude,
           longitude: params.longitude,

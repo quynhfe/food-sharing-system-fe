@@ -10,7 +10,16 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['SYSTEM', 'POST_EXPIRED', 'REQUEST_RECEIVED', 'REQUEST_ACCEPTED', 'WARNING'],
+      enum: [
+        'SYSTEM',
+        'POST_EXPIRED',
+        'REQUEST_RECEIVED',
+        'REQUEST_ACCEPTED',
+        'REQUEST_REJECTED',
+        'REQUEST_CANCELLED',
+        'TRANSACTION_COMPLETED',
+        'WARNING',
+      ],
       required: true,
     },
     title: {
@@ -24,6 +33,14 @@ const notificationSchema = new mongoose.Schema(
     relatedPostId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'FoodPost',
+    },
+    relatedRequestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Request',
+    },
+    relatedConversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Conversation',
     },
     isRead: {
       type: Boolean,

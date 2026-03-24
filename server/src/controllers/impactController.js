@@ -2,6 +2,7 @@ import Request from '../models/Request.js';
 import FoodPost from '../models/FoodPost.js';
 import User from '../models/User.js';
 import ImpactRecord from '../models/ImpactRecord.js';
+import Transaction from '../models/Transaction.js';
 import { sendSuccess, sendError } from '../helpers/responseHelper.js';
 
 // ─── Level Config ──────────────────────────────────────────────
@@ -85,11 +86,36 @@ export const getImpactStats = async (req, res, next) => {
       dateFilter = { createdAt: { $gte: monthAgo } };
     }
 
+    const timeRange = dateFilter.createdAt;
+
     // Count posts donated (any status) — shows immediately after posting
     const totalShared = await FoodPost.countDocuments({
       donorId: userId,
       ...dateFilter,
     });
+
+    // Profile card: bài đăng còn tồn tại (không deleted), có thể lọc theo period
+    const postsSharedQuery = {
+      donorId: userId,
+      status: { $ne: 'deleted' },
+      ...(timeRange ? { createdAt: timeRange } : {}),
+    };
+    const postsSharedCount = await FoodPost.countDocuments(postsSharedQuery);
+
+    // Đã nhận + kg đã cứu: giao dịch hoàn tất với vai trò người nhận
+    const receivedTxQuery = {
+      receiverId: userId,
+      status: 'completed',
+      ...(timeRange ? { completedAt: timeRange } : {}),
+    };
+    const receivedTx = await Transaction.find(receivedTxQuery)
+      .select('quantity unit')
+      .lean();
+    const receivedCompletedCount = receivedTx.length;
+    const rescuedKgRaw = receivedTx.reduce(
+      (sum, t) => sum + t.quantity * (UNIT_WEIGHT[t.unit] || 0.5),
+      0
+    );
 
     // Aggregate completed impact records for kg/co2 metrics
     const impacts = await ImpactRecord.find({
@@ -103,8 +129,14 @@ export const getImpactStats = async (req, res, next) => {
 
     for (const impact of impacts) {
       totalMealsShared += impact.mealsShared || 0;
-      totalFoodKg += impact.foodSavedKg || 0;
-      totalCo2Kg += impact.co2ReducedKg || 0;
+      const kg =
+        typeof impact.quantity === 'number' && impact.unit
+          ? toKg(impact.quantity, impact.unit)
+          : 0;
+      totalFoodKg += kg;
+      const co2 =
+        typeof impact.co2Reduced === 'number' ? impact.co2Reduced : kg * CO2_PER_KG;
+      totalCo2Kg += co2;
     }
 
     const user = await User.findById(userId).select('exp');
@@ -113,6 +145,9 @@ export const getImpactStats = async (req, res, next) => {
 
     return sendSuccess(res, {
       totalShared,
+      postsSharedCount,
+      receivedCompletedCount,
+      rescuedKg: parseFloat(rescuedKgRaw.toFixed(2)),
       totalMealsShared: parseFloat(totalMealsShared.toFixed(2)),
       totalFoodKg: parseFloat(totalFoodKg.toFixed(2)),
       totalCo2Kg: parseFloat(totalCo2Kg.toFixed(2)),

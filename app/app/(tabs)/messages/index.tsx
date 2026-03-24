@@ -1,5 +1,6 @@
 // app/(tabs)/messages/index.tsx – Screen 14: Chat List
 import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
@@ -74,9 +75,14 @@ export default function MessagesScreen() {
   }, []);
 
   useEffect(() => {
-    fetchChats();
-    connectSocket(); // ensure socket is connected
-  }, [fetchChats]);
+    connectSocket();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchChats();
+    }, [fetchChats])
+  );
 
   const filteredChats = chats.filter((chat) => {
     const matchesSearch =

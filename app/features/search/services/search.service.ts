@@ -31,7 +31,7 @@ export class SearchService {
     params: SearchParams
   ): Promise<ApiResponse<SearchPaginatedResponse>> {
     try {
-      const response = await apiClient.get(this.basePath, {
+      const response = await apiClient.get(SearchService.basePath, {
         params: {
           search: params.search,
           category: params.category,

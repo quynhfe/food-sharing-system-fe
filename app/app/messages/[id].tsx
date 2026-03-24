@@ -13,6 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, MoreVertical, Camera, Send, CheckCircle } from 'lucide-react-native';
 import { getChatMessages, completeRequest, Message } from '../../services/chatService';
@@ -58,6 +59,7 @@ function groupByDate(messages: Message[]): { date: string; messages: Message[] }
 export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const flatListRef = useRef<FlatList>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -73,6 +75,9 @@ export default function ChatDetailScreen() {
   const [postTitle, setPostTitle] = useState('');
   const [postImage, setPostImage] = useState<string | null>(null);
   const [convStatus, setConvStatus] = useState<'open' | 'closed'>('open');
+  const [donorConfirmed, setDonorConfirmed] = useState(false);
+  const [receiverConfirmed, setReceiverConfirmed] = useState(false);
+  const [convDonorId, setConvDonorId] = useState<string | null>(null);
 
   // Get current user id from storage (saved as JSON under 'userInfo')
   useEffect(() => {
@@ -106,7 +111,18 @@ export default function ChatDetailScreen() {
       // Backend returns requestId separately from transactionId.
       setRequestId(data.conversation.requestId ?? null);
 
-      if (data.conversation.status === 'closed') setIsCompleted(true);
+      setDonorConfirmed(!!data.conversation.donorConfirmed);
+      setReceiverConfirmed(!!data.conversation.receiverConfirmed);
+      setConvDonorId(
+        data.conversation.donorId != null ? String(data.conversation.donorId) : null
+      );
+
+      if (
+        data.conversation.status === 'closed' ||
+        data.conversation.requestStatus === 'completed'
+      ) {
+        setIsCompleted(true);
+      }
     } catch (err) {
       console.error('[ChatDetail] Failed to load messages:', err);
     } finally {
@@ -187,12 +203,17 @@ export default function ChatDetailScreen() {
     }
   };
 
+  const isDonor =
+    !!(myUserId && convDonorId && String(myUserId) === String(convDonorId));
+  const myConfirmed = isDonor ? donorConfirmed : receiverConfirmed;
+  const otherConfirmed = isDonor ? receiverConfirmed : donorConfirmed;
+
   const handleComplete = async () => {
-    if (!requestId || isCompleting || isCompleted) return;
+    if (!requestId || isCompleting || isCompleted || myConfirmed) return;
 
     Alert.alert(
       'Đánh dấu hoàn tất',
-      'Bạn có chắc chắn muốn đánh dấu giao dịch này là hoàn tất?',
+      'Xác nhận bạn đã giao / đã nhận xong phần thỏa thuận? Cả người cho và người nhận đều phải bấm Hoàn tất thì giao dịch mới được chốt và có thông báo chúc mừng.',
       [
         { text: 'Huỷ', style: 'cancel' },
         {
@@ -201,10 +222,23 @@ export default function ChatDetailScreen() {
           onPress: async () => {
             try {
               setIsCompleting(true);
-              await completeRequest(requestId);
-              setIsCompleted(true);
-              setConvStatus('closed');
-              Alert.alert('Thành công', 'Giao dịch đã được đánh dấu hoàn tất!');
+              const res = await completeRequest(requestId);
+              setDonorConfirmed(!!res.donorConfirmed);
+              setReceiverConfirmed(!!res.receiverConfirmed);
+              queryClient.invalidateQueries({ queryKey: ['notifications'] });
+              queryClient.invalidateQueries({ queryKey: ['donorRequestHistory'] });
+              queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+
+              if (res.fullyCompleted) {
+                setIsCompleted(true);
+                setConvStatus('closed');
+                Alert.alert(
+                  '🎉 Chúc mừng!',
+                  'Cả hai bên đã xác nhận — coi như đã nhận hàng thành công. Cảm ơn bạn đã chia sẻ thực phẩm!'
+                );
+              } else {
+                Alert.alert('Đã ghi nhận', res.message || 'Chờ đối tác cũng bấm Hoàn tất.');
+              }
             } catch (err: any) {
               Alert.alert(
                 'Lỗi',
@@ -391,34 +425,52 @@ export default function ChatDetailScreen() {
         />
       )}
 
-      {/* "Mark Complete" floating button */}
+      {/* Hoàn tất: cần cả hai bên */}
       {!isCompleted && convStatus === 'open' && (
         <View
-          className="absolute left-0 right-0 flex items-center pointer-events-none"
+          className="absolute left-0 right-0 px-4 items-center"
+          pointerEvents="box-none"
           style={{ bottom: 88 }}
         >
-          <TouchableOpacity
-            className="flex-row items-center gap-2 bg-primary px-6 py-3 rounded-full shadow-lg"
-            style={{
-              shadowColor: '#218c28',
-              shadowOpacity: 0.4,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 8,
-            }}
-            onPress={handleComplete}
-            disabled={isCompleting}
-            activeOpacity={0.85}
-          >
-            {isCompleting ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <CheckCircle size={18} color="white" />
-            )}
-            <Text className="text-white font-bold text-sm uppercase tracking-wide">
-              Đánh dấu hoàn tất
+          <View className="mb-2 rounded-2xl bg-white/95 border border-primary/15 px-4 py-2 shadow-sm max-w-full">
+            <Text className="text-center text-[11px] text-slate-600 font-semibold">
+              Người cho: {donorConfirmed ? '✓ Đã xác nhận' : '… Chưa'}{'  ·  '}
+              Người nhận: {receiverConfirmed ? '✓ Đã xác nhận' : '… Chưa'}
             </Text>
-          </TouchableOpacity>
+          </View>
+          {myConfirmed ? (
+            <View className="flex-row items-center gap-2 bg-amber-50 border border-amber-200 px-5 py-3 rounded-full">
+              <CheckCircle size={18} color="#b45309" />
+              <Text className="text-amber-900 font-bold text-sm text-center max-w-[280px]">
+                {otherConfirmed
+                  ? 'Đang đồng bộ hoàn tất…'
+                  : 'Bạn đã xác nhận. Chờ đối tác bấm Hoàn tất.'}
+              </Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              className="flex-row items-center gap-2 bg-primary px-6 py-3 rounded-full shadow-lg pointer-events-auto"
+              style={{
+                shadowColor: '#218c28',
+                shadowOpacity: 0.4,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 4 },
+                elevation: 8,
+              }}
+              onPress={handleComplete}
+              disabled={isCompleting}
+              activeOpacity={0.85}
+            >
+              {isCompleting ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <CheckCircle size={18} color="white" />
+              )}
+              <Text className="text-white font-bold text-sm uppercase tracking-wide">
+                Đánh dấu hoàn tất
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 

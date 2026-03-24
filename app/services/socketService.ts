@@ -4,8 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Use the same base URL as the REST API client, but without the /api/v1 suffix.
 // Using EXPO_PUBLIC_API_URL with LAN IP ensures the device (physical or emulator)
 // can actually reach the dev machine — 127.0.0.1 would point to the device itself.
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.17:5000/api/v1';
-const SOCKET_URL = API_BASE.replace(/\/api\/v1\/?$/, '');
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.10.96.43:5000/api/v1';
+const SOCKET_URL = API_URL.replace(/\/api\/v1\/?$/, '');
 
 let socket: Socket | null = null;
 

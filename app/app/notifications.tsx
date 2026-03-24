@@ -1,14 +1,22 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Bell, Info, CheckCircle, AlertCircle, Clock, Gift } from 'lucide-react-native';
-import { router } from 'expo-router';
+import {
+  ArrowLeft,
+  Info,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Gift,
+  XCircle,
+  Ban,
+} from 'lucide-react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { NotificationService, type NotificationItem } from '@/features/notification/services/notification.service';
 import { EmptyState } from '@/features/feed/components/EmptyState';
-import { formatTimeLeft } from '@/utils/helpers'; // Custom helper if needed, or implement simple relative time
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
@@ -23,6 +31,12 @@ export default function NotificationsScreen() {
       return lastPage.data.pagination.hasMore ? lastPage.data.pagination.page + 1 : undefined;
     },
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => NotificationService.markAsRead(id),
@@ -49,10 +63,46 @@ export default function NotificationsScreen() {
         return <Gift size={20} color="#3B82F6" />;
       case 'REQUEST_ACCEPTED':
         return <CheckCircle size={20} color="#10B981" />;
+      case 'TRANSACTION_COMPLETED':
+        return <CheckCircle size={20} color="#2E7D32" />;
+      case 'REQUEST_REJECTED':
+        return <XCircle size={20} color="#DC2626" />;
+      case 'REQUEST_CANCELLED':
+        return <Ban size={20} color="#64748B" />;
       case 'WARNING':
         return <AlertCircle size={20} color="#F59E0B" />;
       default:
         return <Info size={20} color="#64748B" />;
+    }
+  };
+
+  const resolvePostId = (item: NotificationItem): string | undefined => {
+    const rp = item.relatedPostId;
+    if (!rp) return undefined;
+    if (typeof rp === 'string') return rp;
+    return rp._id;
+  };
+
+  const resolveConversationId = (item: NotificationItem): string | undefined => {
+    const c = item.relatedConversationId;
+    if (!c) return undefined;
+    if (typeof c === 'string') return c;
+    return c._id;
+  };
+
+  const openFromNotification = (item: NotificationItem) => {
+    if (item.type === 'REQUEST_RECEIVED') {
+      router.push('/donor-requests' as any);
+      return;
+    }
+    const convId = resolveConversationId(item);
+    if (convId) {
+      router.push(`/messages/${convId}` as any);
+      return;
+    }
+    const postId = resolvePostId(item);
+    if (postId) {
+      router.push(`/food/${postId}` as any);
     }
   };
 
@@ -65,9 +115,7 @@ export default function NotificationsScreen() {
           if (!item.isRead) {
             markAsReadMutation.mutate(item._id);
           }
-          if (item.relatedPostId) {
-            router.push(`/food/${item.relatedPostId._id}` as any);
-          }
+          openFromNotification(item);
         }}
       >
         <View className={`w-12 h-12 rounded-full items-center justify-center mr-3 ${!item.isRead ? 'bg-white shadow-sm' : 'bg-slate-50'}`}>

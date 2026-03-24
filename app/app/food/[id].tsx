@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, TouchableOpacity, ScrollView, Modal, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { ArrowLeft, Heart, MapPin, Clock, Calendar, MessageCircle, CheckCircle } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
-import { useQuery } from '@tanstack/react-query';
+import Animated, { SlideInDown } from 'react-native-reanimated';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Text } from '@/components/ui/text';
 import { Badge } from '@/components/ui/badge';
@@ -16,12 +16,25 @@ import { useWishlistStore } from '@/features/wishlist/stores/wishlist.store';
 import { useToast } from '@/context/ToastContext';
 import { PostService } from '@/features/post/services/post.service';
 import { EmptyState } from '@/features/feed/components/EmptyState';
+import { authService } from '@/services/authService';
+import { requestService } from '@/services/requestService';
+import { getConversationByPost } from '@/services/chatService';
+import { getAccessToken } from '@/services/api-client';
+import {
+  getFoodAvailabilityBadge,
+  summarizeRequestsForPost,
+} from '@/features/feed/utils/foodAvailabilityBadge';
 
 export default function FoodDetail() {
   const { id } = useLocalSearchParams();
   const postId = id as string;
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestedQty, setRequestedQty] = useState(1);
+  const [currentUser, setCurrentUser] = useState<{ _id?: string } | null>(null);
+  const [ownerChatLoading, setOwnerChatLoading] = useState(false);
 
   const { addToWishlist, removeFromWishlist } = useWishlistStore();
   const saved = useWishlistStore(state => !!state.wishlistMap[postId]);
@@ -34,6 +47,120 @@ export default function FoodDetail() {
   });
 
   const food = response?.data;
+  const donorUserId = food?.donor?._id != null ? String(food.donor._id) : null;
+  const isOwnPost =
+    !!currentUser?._id && !!donorUserId && String(currentUser._id) === donorUserId;
+
+  const { data: donorHistory = [] } = useQuery({
+    queryKey: ['donorRequestHistory'],
+    queryFn: requestService.getDonorRequestHistory,
+    enabled: !!postId && isOwnPost,
+  });
+
+  const ownerRequestSummary = useMemo(
+    () => summarizeRequestsForPost(donorHistory, postId),
+    [donorHistory, postId]
+  );
+
+  const availabilityBadge = food
+    ? getFoodAvailabilityBadge(food, {
+        isOwner: isOwnPost,
+        requestSummary: isOwnPost ? ownerRequestSummary : undefined,
+      })
+    : { label: 'Còn nhận', variant: 'success' as const };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const u = await authService.getCurrentUser();
+      if (!cancelled) setCurrentUser(u);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isOwnPost) setShowConfirm(false);
+  }, [isOwnPost]);
+
+  const maxRequestQty = food
+    ? Math.max(
+        1,
+        Math.floor(Number(food.availableQuantity ?? food.quantity) || 1),
+      )
+    : 1;
+
+  useEffect(() => {
+    if (showConfirm && food) {
+      setRequestedQty((q) => Math.min(Math.max(1, q), maxRequestQty));
+    }
+  }, [showConfirm, food, maxRequestQty]);
+
+  const canRequest =
+    !!food &&
+    food.status === 'active' &&
+    maxRequestQty >= 1 &&
+    (Number(food.availableQuantity ?? food.quantity) || 0) >= 1;
+
+  const openRequestModal = async () => {
+    const token = await getAccessToken();
+    if (!token) {
+      Alert.alert('Đăng nhập', 'Vui lòng đăng nhập để gửi yêu cầu nhận món.', [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Đăng nhập', onPress: () => router.push('/(auth)/login' as any) },
+      ]);
+      return;
+    }
+    setRequestedQty(1);
+    setShowConfirm(true);
+  };
+
+  const submitRequest = async () => {
+    if (!food?._id) return;
+    const token = await getAccessToken();
+    if (!token) {
+      showToast('Vui lòng đăng nhập để gửi yêu cầu', 'error');
+      return;
+    }
+    const qty = Math.min(Math.max(1, Math.floor(requestedQty)), maxRequestQty);
+    setRequestSubmitting(true);
+    try {
+      await requestService.createRequest(food._id, qty);
+      showToast('Đã gửi yêu cầu. Người đăng sẽ xem xét và phản hồi.', 'success');
+      setShowConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      queryClient.invalidateQueries({ queryKey: ['impactStats'] });
+      queryClient.invalidateQueries({ queryKey: ['incomingRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['donorRequestHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Không thể gửi yêu cầu lúc này';
+      showToast(msg, 'error');
+    } finally {
+      setRequestSubmitting(false);
+    }
+  };
+
+  const openOwnerChat = async () => {
+    if (!food?._id) return;
+    try {
+      setOwnerChatLoading(true);
+      const conv = await getConversationByPost(food._id);
+      router.push(`/messages/${conv._id}` as any);
+    } catch {
+      showToast(
+        'Chưa có cuộc trò chuyện. Chấp nhận một yêu cầu nhận món trong Hồ sơ → Yêu cầu trên bài của tôi.',
+        'info'
+      );
+    } finally {
+      setOwnerChatLoading(false);
+    }
+  };
 
   const images = (food?.images?.length ? food.images : ['https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800']);
 
@@ -177,8 +304,8 @@ export default function FoodDetail() {
             <View className="h-1.5 w-12 rounded-full bg-slate-200" />
           </View>
 
-          <View className="flex-row items-center gap-3 mb-5">
-            <Badge label="Còn nhận" variant="success" />
+          <View className="flex-row items-center gap-3 mb-5 flex-wrap">
+            <Badge label={availabilityBadge.label} variant={availabilityBadge.variant} />
             <View className="flex-row h-7 items-center gap-1.5 rounded-full bg-[#F8FAF8] px-3 border border-slate-100">
               <MapPin size={14} color="#64748B" />
               <Text className="text-xs font-bold text-slate-600">
@@ -250,18 +377,50 @@ export default function FoodDetail() {
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}
       >
         <View className="flex-row gap-3">
-          <Button
-            variant="outline"
-            className="w-14 h-14 p-0 items-center justify-center rounded-2xl bg-[#F8FAF8] border-slate-200"
-          >
-            <MessageCircle size={24} color="#1A2E1A" />
-          </Button>
-          <Button
-            className="flex-1 h-14 rounded-2xl bg-[#2E7D32] shadow-xl shadow-[#2E7D32]/30"
-            onPress={() => setShowConfirm(true)}
-          >
-            <Text className="text-white font-extrabold text-lg">Yêu cầu nhận ngay</Text>
-          </Button>
+          {isOwnPost ? (
+            <View className="flex-1 gap-2">
+              <Button
+                className="w-full h-14 rounded-2xl bg-[#2563EB] shadow-md"
+                onPress={openOwnerChat}
+                disabled={ownerChatLoading}
+              >
+                {ownerChatLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <View className="flex-row items-center justify-center gap-2">
+                    <MessageCircle size={22} color="white" />
+                    <Text className="text-white font-extrabold text-base">
+                      Nhắn tin người nhận
+                    </Text>
+                  </View>
+                )}
+              </Button>
+              <Text className="text-center text-xs font-semibold text-amber-900 px-1">
+                Bài của bạn — không thể tự gửi yêu cầu nhận. Mở chat sau khi đã chấp nhận yêu cầu.
+              </Text>
+            </View>
+          ) : !canRequest ? (
+            <View className="flex-1 justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <Text className="text-center text-sm font-bold text-slate-600">
+                Món này hiện không còn nhận yêu cầu.
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                className="w-14 h-14 p-0 items-center justify-center rounded-2xl bg-[#F8FAF8] border-slate-200"
+              >
+                <MessageCircle size={24} color="#1A2E1A" />
+              </Button>
+              <Button
+                className="flex-1 h-14 rounded-2xl bg-[#2E7D32] shadow-xl shadow-[#2E7D32]/30"
+                onPress={openRequestModal}
+              >
+                <Text className="text-white font-extrabold text-lg">Yêu cầu nhận ngay</Text>
+              </Button>
+            </>
+          )}
         </View>
       </View>
 
@@ -289,17 +448,46 @@ export default function FoodDetail() {
               <Text className="text-slate-500 text-center text-base leading-relaxed font-medium px-2">
                 Bạn đang yêu cầu nhận món <Text className="font-extrabold text-[#2E7D32]">{food.title}</Text> từ <Text className="font-extrabold text-[#1A2E1A]">{food.donor?.fullName || 'Ẩn danh'}</Text>. Người đăng sẽ xem xét và phản hồi sớm nhất.
               </Text>
+
+              {maxRequestQty > 1 && (
+                <View className="mt-6 w-full flex-row items-center justify-between rounded-2xl border border-slate-100 bg-[#F8FAF8] px-4 py-3">
+                  <Text className="text-sm font-bold text-slate-700">Số lượng ({food.unit})</Text>
+                  <View className="flex-row items-center gap-4">
+                    <TouchableOpacity
+                      onPress={() => setRequestedQty((q) => Math.max(1, q - 1))}
+                      disabled={requestedQty <= 1}
+                      className="w-10 h-10 rounded-full bg-white items-center justify-center border border-slate-200"
+                    >
+                      <Text className="text-xl font-bold text-slate-600">−</Text>
+                    </TouchableOpacity>
+                    <Text className="text-lg font-extrabold text-[#1A2E1A] w-8 text-center">
+                      {requestedQty}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() =>
+                        setRequestedQty((q) => Math.min(maxRequestQty, q + 1))
+                      }
+                      disabled={requestedQty >= maxRequestQty}
+                      className="w-10 h-10 rounded-full bg-white items-center justify-center border border-slate-200"
+                    >
+                      <Text className="text-xl font-bold text-slate-600">+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
 
             <View className="w-full gap-3">
               <Button
                 className="w-full h-14 rounded-2xl bg-[#2E7D32] shadow-lg shadow-[#2E7D32]/20"
-                onPress={() => {
-                  setShowConfirm(false);
-                  router.push({ pathname: '/food/[id]', params: { id: food._id } }); 
-                }}
+                onPress={submitRequest}
+                disabled={requestSubmitting}
               >
-                <Text className="text-white font-extrabold text-lg">Xác nhận gửi</Text>
+                {requestSubmitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-white font-extrabold text-lg">Xác nhận gửi</Text>
+                )}
               </Button>
               <Button
                 variant="ghost"

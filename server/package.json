@@ -23,14 +23,10 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.12.1",
     "morgan": "^1.10.0",
-<<<<<<< HEAD
-    "nodemailer": "^8.0.2",
-    "socket.io": "^4.8.3"
-=======
+    "socket.io": "^4.8.3",
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.2"
->>>>>>> origin/feat/wishlist-search-map-post
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

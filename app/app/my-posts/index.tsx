@@ -55,7 +55,11 @@ export default function MyPostsScreen() {
 
   const renderItem = ({ item }: { item: FoodPost }) => (
     <View className="mb-6">
-      <FoodCard post={item} onPress={() => router.push(`/food/${item._id}` as any)} />
+      <FoodCard
+        post={item}
+        ownerListing
+        onPress={() => router.push(`/food/${item._id}` as any)}
+      />
       <View className="flex-row items-center gap-3 mt-3 px-1">
         <TouchableOpacity
           className="flex-1 flex-row items-center justify-center gap-2 h-10 rounded-xl bg-slate-100"

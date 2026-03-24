@@ -5,6 +5,9 @@ import { Text } from '@/components/ui/text';
 import { MapPin, Clock, Heart } from 'lucide-react-native';
 import { formatDistance, formatTimeLeft } from '@/utils/helpers';
 import type { FoodPost } from '../types';
+import { resolveDonorDisplay } from '../utils/resolveDonorDisplay';
+import { getFoodAvailabilityBadge } from '../utils/foodAvailabilityBadge';
+import { Badge } from '@/components/ui/badge';
 import { useCarousel } from '@/features/post/hooks/useCarousel';
 import { useWishlistStore } from '@/features/wishlist/stores/wishlist.store';
 import { useToast } from '@/context/ToastContext';
@@ -12,17 +15,16 @@ import { useToast } from '@/context/ToastContext';
 interface FoodCardProps {
   post: FoodPost;
   onPress: () => void;
+  /** Khi có (vd. từ “Bài đăng của tôi”), hiện badge trạng thái nhận / duyệt */
+  ownerListing?: boolean;
 }
 
-export function FoodCard({ post, onPress }: FoodCardProps) {
+export function FoodCard({ post, onPress, ownerListing }: FoodCardProps) {
   const { addToWishlist, removeFromWishlist } = useWishlistStore();
   const saved = useWishlistStore(state => !!state.wishlistMap[post._id!]);
   const { showToast } = useToast();
 
-  const donorName = typeof post.donorId === 'object' ? post.donorId.fullName : 'Ẩn danh';
-  const donorAvatar = typeof post.donorId === 'object' 
-    ? post.donorId.avatar || 'https://i.pravatar.cc/150' 
-    : 'https://i.pravatar.cc/150';
+  const { name: donorName, avatar: donorAvatar } = resolveDonorDisplay(post);
 
   const distance = post.calculatedDistance 
     ? formatDistance(post.calculatedDistance / 1000) 
@@ -47,6 +49,14 @@ export function FoodCard({ post, onPress }: FoodCardProps) {
     realCurrentIndex,
     hasMultipleImages,
   } = useCarousel(images, layoutWidth);
+
+  const ownerBadge =
+    ownerListing && post.requestSummary
+      ? getFoodAvailabilityBadge(post, {
+          isOwner: true,
+          requestSummary: post.requestSummary,
+        })
+      : null;
 
   return (
     <TouchableOpacity
@@ -147,6 +157,11 @@ export function FoodCard({ post, onPress }: FoodCardProps) {
       </View>
 
       <View className="p-3.5 flex-1 justify-between">
+        {ownerBadge ? (
+          <View className="mb-2">
+            <Badge label={ownerBadge.label} variant={ownerBadge.variant} />
+          </View>
+        ) : null}
         <Text className="font-extrabold text-[15px] leading-[22px] text-slate-800" numberOfLines={2}>
           {post.title}
         </Text>

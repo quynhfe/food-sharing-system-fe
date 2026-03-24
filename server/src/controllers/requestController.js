@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import { sendSuccess, sendError } from '../helpers/responseHelper.js';
 import FoodPost from '../models/FoodPost.js';
 import Transaction from '../models/Transaction.js';
+import { notifyUser } from '../helpers/notificationHelper.js';
 
 /**
  * Helper to update trust score
@@ -62,10 +63,12 @@ export const createRequest = async (req, res, next) => {
     const receiverId = req.user._id;
     const requested = requestedQty ?? requestedQuantity;
 
-    const post = await FoodPost.findById(postId);
+    const post = await FoodPost.findById(postId).select('donorId availableQuantity title unit');
     if (!post) return sendError(res, 'Không tìm thấy bài đăng', 404);
 
-    if (post.donorId.toString() === receiverId.toString()) {
+    const donorIdStr = String(post.donorId);
+    const receiverIdStr = String(receiverId);
+    if (donorIdStr === receiverIdStr) {
       return sendError(res, 'Bạn không thể yêu cầu thực phẩm của chính mình', 400);
     }
 
@@ -96,6 +99,19 @@ export const createRequest = async (req, res, next) => {
     });
 
     await newRequest.save();
+
+    const receiver = await User.findById(receiverId).select('fullName').lean();
+    const receiverLabel = receiver?.fullName?.trim() || 'Một người dùng';
+    const unitLabel = post.unit || 'đơn vị';
+    await notifyUser({
+      userId: post.donorId,
+      type: 'REQUEST_RECEIVED',
+      title: 'Có yêu cầu nhận món mới',
+      message: `${receiverLabel} muốn nhận ${requested} ${unitLabel} từ «${post.title}». Vào Hồ sơ → Yêu cầu nhận món để phê duyệt.`,
+      relatedPostId: post._id,
+      relatedRequestId: newRequest._id,
+    });
+
     return sendSuccess(res, newRequest, 201);
   } catch (error) {
     next(error);
@@ -157,6 +173,18 @@ export const acceptRequest = async (req, res, next) => {
     });
     await conversation.save();
 
+    const donorProfile = await User.findById(donorId).select('fullName').lean();
+    const donorLabel = donorProfile?.fullName?.trim() || 'Người cho';
+    await notifyUser({
+      userId: request.receiverId,
+      type: 'REQUEST_ACCEPTED',
+      title: 'Yêu cầu được chấp nhận',
+      message: `${donorLabel} đã chấp nhận yêu cầu của bạn về «${post.title}». Mở chat để hẹn nhận món.`,
+      relatedPostId: post._id,
+      relatedRequestId: request._id,
+      relatedConversationId: conversation._id,
+    });
+
     return sendSuccess(res, { 
       message: 'Đã chấp nhận yêu cầu', 
       request,
@@ -175,7 +203,7 @@ export const acceptRequest = async (req, res, next) => {
 export const rejectRequest = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const request = await Request.findById(id);
+    const request = await Request.findById(id).populate('postId', 'title');
 
     if (!request) return sendError(res, 'Không tìm thấy yêu cầu', 404);
     if (request.donorId.toString() !== req.user._id.toString()) {
@@ -187,6 +215,19 @@ export const rejectRequest = async (req, res, next) => {
 
     request.status = 'rejected';
     await request.save();
+
+    const postTitle =
+      request.postId && typeof request.postId === 'object' && request.postId.title
+        ? request.postId.title
+        : 'bài đăng';
+    await notifyUser({
+      userId: request.receiverId,
+      type: 'REQUEST_REJECTED',
+      title: 'Yêu cầu bị từ chối',
+      message: `Người cho đã từ chối yêu cầu nhận món của bạn về «${postTitle}».`,
+      relatedPostId: request.postId?._id || request.postId,
+      relatedRequestId: request._id,
+    });
 
     return sendSuccess(res, { message: 'Đã từ chối yêu cầu', request });
   } catch (error) {
@@ -221,6 +262,23 @@ export const cancelRequest = async (req, res, next) => {
     request.cancelReason = reason;
     await request.save();
 
+    const postTitle =
+      request.postId && typeof request.postId === 'object' && request.postId.title
+        ? request.postId.title
+        : 'bài đăng';
+    const canceller = await User.findById(userId).select('fullName').lean();
+    const cancellerLabel = canceller?.fullName?.trim() || 'Đối tác';
+    const otherUserId =
+      request.donorId.toString() === userId ? request.receiverId : request.donorId;
+    await notifyUser({
+      userId: otherUserId,
+      type: 'REQUEST_CANCELLED',
+      title: 'Yêu cầu đã bị hủy',
+      message: `${cancellerLabel} đã hủy yêu cầu liên quan «${postTitle}».`,
+      relatedPostId: request.postId?._id || request.postId,
+      relatedRequestId: request._id,
+    });
+
     // If it was already accepted, restore quantity and penalize the canceling party
     // And mark transaction + conversation cancelled
     if (previousStatus === 'accepted') {
@@ -252,7 +310,80 @@ export const cancelRequest = async (req, res, next) => {
 };
 
 /**
- * @desc  Mark a request as completed
+ * Full completion after both donor + receiver confirmed (impact, trust, notifications).
+ */
+const finalizeRequestCompletion = async (request, transaction) => {
+  const post = request.postId;
+
+  request.status = 'completed';
+  await request.save();
+
+  await updateTrustScore(request.donorId, 10, true);
+  await updateTrustScore(request.receiverId, 10, true);
+
+  if (transaction) {
+    transaction.status = 'completed';
+    transaction.completedAt = new Date();
+    await transaction.save();
+    await Conversation.findOneAndUpdate(
+      { transactionId: transaction._id },
+      { status: 'closed' }
+    );
+  }
+
+  if (post && typeof post === 'object' && transaction) {
+    const UNIT_WEIGHT = { kg: 1, portion: 0.5, box: 1.5, item: 0.3 };
+    const weightKg = request.requestedQty * (UNIT_WEIGHT[post.unit] || 0.5);
+    const mealsShared = post.unit === 'portion' ? request.requestedQty : Math.round(weightKg * 3);
+    const co2ReducedKg = weightKg * 2.5;
+
+    const mongoose = (await import('mongoose')).default;
+    const ImpactRecord = mongoose.model('ImpactRecord');
+
+    const existingImpact = await ImpactRecord.findOne({
+      transactionId: transaction._id,
+    });
+    if (!existingImpact) {
+      const impact = new ImpactRecord({
+        transactionId: transaction._id,
+        donorId: request.donorId,
+        receiverId: request.receiverId,
+        quantity: request.requestedQty,
+        unit: post.unit || 'portion',
+        category: post.category || 'other',
+        mealsShared,
+        co2Reduced: co2ReducedKg,
+        calculatedAt: new Date(),
+      });
+      await impact.save();
+    }
+  }
+
+  const doneTitle =
+    post && typeof post === 'object' && post.title ? post.title : 'món đã nhận';
+  const postRef = post?._id || post;
+  const congratsMsg = `Chúc mừng! Cả hai đã xác nhận nhận hàng cho «${doneTitle}». Cảm ơn bạn đã lan tỏa chia sẻ thực phẩm.`;
+
+  await notifyUser({
+    userId: request.receiverId,
+    type: 'TRANSACTION_COMPLETED',
+    title: 'Hoàn tất — chúc mừng!',
+    message: congratsMsg,
+    relatedPostId: postRef,
+    relatedRequestId: request._id,
+  });
+  await notifyUser({
+    userId: request.donorId,
+    type: 'TRANSACTION_COMPLETED',
+    title: 'Hoàn tất — chúc mừng!',
+    message: congratsMsg,
+    relatedPostId: postRef,
+    relatedRequestId: request._id,
+  });
+};
+
+/**
+ * @desc  Mark a request as completed — cần CẢ người cho và người nhận đều bấm hoàn tất
  * @route PUT /api/v1/requests/:id/complete
  * @access Private
  */
@@ -267,65 +398,109 @@ export const completeRequest = async (req, res, next) => {
       return sendError(res, 'Không tìm thấy yêu cầu', 404);
     }
 
-    // Only the donor can mark as completed
-    if (request.donorId.toString() !== userId.toString()) {
+    const isDonor = request.donorId.toString() === userId.toString();
+    const isReceiver = request.receiverId.toString() === userId.toString();
+    if (!isDonor && !isReceiver) {
       return sendError(res, 'Bạn không có quyền thực hiện thao tác này', 403);
     }
 
     if (request.status === 'completed') {
-      return sendError(res, 'Yêu cầu đã được đánh dấu hoàn tất', 400);
+      const transaction = await Transaction.findOne({ requestId: request._id });
+      return sendSuccess(res, {
+        message: 'Giao dịch đã hoàn tất trước đó',
+        fullyCompleted: true,
+        donorConfirmed: true,
+        receiverConfirmed: true,
+        request,
+        transaction,
+      });
     }
 
     if (!['accepted'].includes(request.status)) {
       return sendError(res, 'Yêu cầu phải ở trạng thái "accepted" trước khi hoàn tất', 400);
     }
 
-    request.status = 'completed';
-    await request.save();
-
-    // Reward both Donor and Receiver with +10 Trust Score
-    await updateTrustScore(request.donorId, 10, true);
-    await updateTrustScore(request.receiverId, 10, true);
-
     const transaction = await Transaction.findOne({ requestId: request._id });
-    if (transaction) {
-       transaction.status = 'completed';
-       transaction.completedAt = new Date();
-       await transaction.save();
-
-       // Close the linked conversation
-       await Conversation.findOneAndUpdate(
-         { transactionId: transaction._id },
-         { status: 'closed' }
-       );
+    if (!transaction) {
+      return sendError(res, 'Không tìm thấy giao dịch liên quan', 404);
     }
 
-    // Create Impact Record
-    const post = request.postId;
-    if (post) {
-      const UNIT_WEIGHT = { kg: 1, portion: 0.5, box: 1.5, item: 0.3 };
-      const weightKg = request.requestedQty * (UNIT_WEIGHT[post.unit] || 0.5);
-      
-      const mealsShared = post.unit === 'portion' ? request.requestedQty : Math.round(weightKg * 3);
-      const co2ReducedKg = weightKg * 2.5;
+    if (transaction.status !== 'active') {
+      return sendError(res, 'Giao dịch không còn ở trạng thái có thể hoàn tất', 400);
+    }
 
-      // Dynamic import to avoid circular dependency if needed, but standard import should work.
-      // We will use standard model creation since ImpactController is not strictly needed for this.
-      const mongoose = (await import('mongoose')).default;
-      const ImpactRecord = mongoose.model('ImpactRecord');
-      
-      const impact = new ImpactRecord({
-        transactionId: transaction ? transaction._id : null,
-        donorId: request.donorId,
-        receiverId: request.receiverId,
-        mealsShared,
-        foodSavedKg: weightKg,
-        co2ReducedKg
+    if (isDonor && transaction.donorConfirmed) {
+      return sendSuccess(res, {
+        message: transaction.receiverConfirmed
+          ? 'Đang chờ hệ thống đồng bộ.'
+          : 'Bạn đã xác nhận trước đó. Chờ người nhận bấm Hoàn tất.',
+        fullyCompleted: false,
+        donorConfirmed: true,
+        receiverConfirmed: transaction.receiverConfirmed,
+        request,
+        transaction,
       });
-      await impact.save();
+    }
+    if (isReceiver && transaction.receiverConfirmed) {
+      return sendSuccess(res, {
+        message: transaction.donorConfirmed
+          ? 'Đang chờ hệ thống đồng bộ.'
+          : 'Bạn đã xác nhận trước đó. Chờ người cho bấm Hoàn tất.',
+        fullyCompleted: false,
+        donorConfirmed: transaction.donorConfirmed,
+        receiverConfirmed: true,
+        request,
+        transaction,
+      });
     }
 
-    return sendSuccess(res, { message: 'Giao dịch đã được đánh dấu hoàn tất', request });
+    const now = new Date();
+    if (isDonor) {
+      transaction.donorConfirmed = true;
+      transaction.donorConfirmedAt = now;
+    } else {
+      transaction.receiverConfirmed = true;
+      transaction.receiverConfirmedAt = now;
+    }
+
+    await transaction.save();
+
+    const actor = await User.findById(userId).select('fullName').lean();
+    const actorLabel = actor?.fullName?.trim() || 'Đối tác';
+
+    if (transaction.donorConfirmed && transaction.receiverConfirmed) {
+      await finalizeRequestCompletion(request, transaction);
+      const refreshed = await Request.findById(request._id).populate('postId');
+      const refreshedTx = await Transaction.findById(transaction._id);
+      return sendSuccess(res, {
+        message: 'Chúc mừng! Cả hai bên đã xác nhận — giao dịch hoàn tất.',
+        fullyCompleted: true,
+        donorConfirmed: true,
+        receiverConfirmed: true,
+        request: refreshed,
+        transaction: refreshedTx,
+      });
+    }
+
+    const otherUserId = isDonor ? request.receiverId : request.donorId;
+    await notifyUser({
+      userId: otherUserId,
+      type: 'SYSTEM',
+      title: 'Đối tác đã xác nhận hoàn tất',
+      message: `${actorLabel} đã bấm “Hoàn tất” phía họ. Bạn cũng hãy vào chat và bấm Hoàn tất để kết thúc giao dịch.`,
+      relatedPostId: request.postId?._id || request.postId,
+      relatedRequestId: request._id,
+    });
+
+    return sendSuccess(res, {
+      message:
+        'Đã ghi nhận phía bạn. Khi cả hai đều bấm Hoàn tất, hệ thống sẽ chốt giao dịch và gửi thông báo chúc mừng.',
+      fullyCompleted: false,
+      donorConfirmed: transaction.donorConfirmed,
+      receiverConfirmed: transaction.receiverConfirmed,
+      request,
+      transaction,
+    });
   } catch (error) {
     next(error);
   }
@@ -459,6 +634,19 @@ export const reportNoShow = async (req, res, next) => {
     const penalizedUserId = isDonor ? request.receiverId : request.donorId;
     await updateTrustScore(penalizedUserId, -15, false, false, true);
 
+    const reporter = await User.findById(userId).select('fullName').lean();
+    const reporterLabel = reporter?.fullName?.trim() || 'Đối tác';
+    const postTitle =
+      post && typeof post === 'object' && post.title ? post.title : 'giao dịch';
+    await notifyUser({
+      userId: penalizedUserId,
+      type: 'WARNING',
+      title: 'Báo cáo không đến nhận',
+      message: `${reporterLabel} đã báo cáo không gặp bạn khi nhận món («${postTitle}»). Điểm tin cậy có thể bị ảnh hưởng nếu có nhiều báo cáo.`,
+      relatedPostId: post?._id,
+      relatedRequestId: request._id,
+    });
+
     return sendSuccess(res, { message: 'Đã báo cáo no-show', request });
   } catch (error) {
     next(error);
@@ -479,6 +667,29 @@ export const getMyRequests = async (req, res, next) => {
       })
       .populate('donorId', 'fullName avatar')
       .sort({ createdAt: -1 });
+
+    return sendSuccess(res, requests);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc All requests across the donor's posts (pending + history: accepted/rejected/completed/cancelled)
+ * @route GET /api/v1/requests/donor/history
+ * @access Private
+ */
+export const getDonorRequestHistory = async (req, res, next) => {
+  try {
+    const donorId = req.user._id;
+
+    const requests = await Request.find({ donorId })
+      .populate({
+        path: 'postId',
+        select: 'title images unit status expirationDate location availableQuantity',
+      })
+      .populate('receiverId', 'fullName avatar')
+      .sort({ updatedAt: -1 });
 
     return sendSuccess(res, requests);
   } catch (err) {

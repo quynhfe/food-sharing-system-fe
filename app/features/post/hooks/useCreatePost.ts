@@ -9,8 +9,9 @@ export const useCreatePost = () => {
     mutationFn: (data: CreatePostDTO) => PostService.createPost(data),
     onSuccess: (data) => {
       if (!data.error) {
-        // Invalidate the feed query to trigger a refetch and show the new post
         queryClient.invalidateQueries({ queryKey: ['feedPosts'] });
+        queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+        queryClient.invalidateQueries({ queryKey: ['impactStats'] });
       }
     },
   });
