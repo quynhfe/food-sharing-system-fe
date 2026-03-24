@@ -47,9 +47,15 @@ export default function FoodDetail() {
   });
 
   const food = response?.data;
-  const donorUserId = food?.donor?._id != null ? String(food.donor._id) : null;
+  const donorUserId = useMemo(() => {
+    if (!food) return null;
+    if (food?.donor?._id != null) return String(food.donor._id);
+    if (food?.donorId?._id != null) return String(food.donorId._id);
+    if (food?.donorId != null) return String(food.donorId);
+    return null;
+  }, [food]);
   const isOwnPost =
-    !!currentUser?._id && !!donorUserId && String(currentUser._id) === donorUserId;
+    !!currentUser?._id && !!donorUserId && String(currentUser._id) === String(donorUserId);
 
   const { data: donorHistory = [] } = useQuery({
     queryKey: ['donorRequestHistory'],
@@ -104,6 +110,10 @@ export default function FoodDetail() {
     (Number(food.availableQuantity ?? food.quantity) || 0) >= 1;
 
   const openRequestModal = async () => {
+    if (isOwnPost) {
+      showToast('Bạn không thể yêu cầu thực phẩm của chính mình', 'info');
+      return;
+    }
     const token = await getAccessToken();
     if (!token) {
       Alert.alert('Đăng nhập', 'Vui lòng đăng nhập để gửi yêu cầu nhận món.', [
@@ -118,6 +128,11 @@ export default function FoodDetail() {
 
   const submitRequest = async () => {
     if (!food?._id) return;
+    if (isOwnPost) {
+      showToast('Bạn không thể yêu cầu thực phẩm của chính mình', 'error');
+      setShowConfirm(false);
+      return;
+    }
     const token = await getAccessToken();
     if (!token) {
       showToast('Vui lòng đăng nhập để gửi yêu cầu', 'error');

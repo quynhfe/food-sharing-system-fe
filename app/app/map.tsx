@@ -7,11 +7,13 @@ import { Text } from "@/components/ui/text";
 import { RefreshCw, ArrowLeft, MapPin } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from 'expo-location';
+import Constants from "expo-constants";
 
 import { PostService } from "@/features/post/services/post.service";
 import { ClusterIcon } from "@/features/map/components/ClusterIcon";
 import { MapCarousel } from "@/features/map/components/MapCarousel";
 import { getJitteredCoord } from "@/features/map/utils/map.utils";
+import MapDirections from "@/features/map/components/MapDirections";
 
 // Default region: Da Nang, Vietnam
 const INITIAL_REGION = {
@@ -29,6 +31,9 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState(INITIAL_REGION);
   const [locationLoaded, setLocationLoaded] = useState(false);
   const [selectedCluster, setSelectedCluster] = useState<any[] | null>(null);
+  const [routeDestination, setRouteDestination] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [routeMeta, setRouteMeta] = useState<{ distance: number; duration: number } | null>(null);
+  const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || Constants.expoConfig?.extra?.googleMapsApiKey || "";
 
   React.useEffect(() => {
     (async () => {
@@ -123,6 +128,11 @@ export default function MapScreen() {
                   ? "Đang tìm kiếm..."
                   : `Tìm thấy ${posts.length} món ăn quanh đây`}
               </Text>
+              {routeMeta ? (
+                <Text className="text-xs font-semibold text-emerald-700 mt-1">
+                  Tuyến: {routeMeta.distance.toFixed(1)} km - {Math.round(routeMeta.duration)} phút
+                </Text>
+              ) : null}
             </View>
           </View>
           <TouchableOpacity
@@ -135,6 +145,18 @@ export default function MapScreen() {
             />
           </TouchableOpacity>
         </View>
+        {routeDestination ? (
+          <TouchableOpacity
+            onPress={() => {
+              setRouteDestination(null);
+              setRouteMeta(null);
+            }}
+            className="mt-3 self-start bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-full"
+            activeOpacity={0.8}
+          >
+            <Text className="text-xs font-bold text-slate-700">Ẩn tuyến đường</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <MapView
@@ -178,9 +200,35 @@ export default function MapScreen() {
             </Marker>
           );
         })}
+
+        {routeDestination && googleMapsApiKey ? (
+          <MapDirections
+            origin={{ latitude: userLocation.latitude, longitude: userLocation.longitude }}
+            destination={routeDestination}
+            apiKey={googleMapsApiKey}
+            onReady={(meta) => {
+              setRouteMeta(meta);
+              mapRef.current?.fitToCoordinates(
+                [
+                  { latitude: userLocation.latitude, longitude: userLocation.longitude },
+                  routeDestination,
+                ],
+                { edgePadding: { top: 120, right: 64, bottom: 220, left: 64 }, animated: true }
+              );
+            }}
+          />
+        ) : null}
       </MapView>
 
-      <MapCarousel selectedCluster={selectedCluster!} />
+      <MapCarousel
+        selectedCluster={selectedCluster!}
+        userLocation={userLocation}
+        onNavigateInApp={(coords) => {
+          setRouteDestination(coords);
+          setRouteMeta(null);
+          setSelectedCluster(null);
+        }}
+      />
     </View>
   );
 }

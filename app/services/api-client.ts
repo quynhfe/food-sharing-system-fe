@@ -1,7 +1,7 @@
 import { storage } from '@/utils/storage';
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.10.96.43:5000/api/v1';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.37.65.30:5000/api/v1';
 
 // Storage keys
 const TOKEN_KEY = 'userToken';
